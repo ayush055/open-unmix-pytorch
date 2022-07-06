@@ -154,6 +154,7 @@ def load_datasets(
     Returns:
         train_dataset, validation_dataset
     """
+    print("PROCESSING DATA")
     if args.dataset == "aligned":
         parser.add_argument("--input-file", type=str)
         parser.add_argument("--output-file", type=str)
@@ -308,6 +309,8 @@ def load_datasets(
             "download": args.root is None,
             "seed": args.seed,
         }
+        
+        print(args)
 
         source_augmentations = aug_from_str(args.source_augmentations)
 
