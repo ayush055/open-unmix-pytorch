@@ -1,15 +1,15 @@
 name: umx-gpu
 
 channels:
-  - conda-forge
   - pytorch
+  - conda-forge
   - nvidia
 
 dependencies:
   - python=3.7
   - numpy=1.18
   - scipy=1.4
-  - pytorch==1.9.0+cu111
+  - pytorch==1.9.0
   - torchaudio==0.9.0
   - cudatoolkit=11.1
   - scikit-learn=0.22
