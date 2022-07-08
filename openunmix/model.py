@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torch.nn import LSTM, BatchNorm1d, Linear, Parameter
+from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 
@@ -67,6 +67,8 @@ class OpenUnmix(nn.Module):
             batch_first=False,
             dropout=0.4 if nb_layers > 1 else 0,
         )
+
+        self.transformer = Transformer(d_model=hidden_size)
 
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
@@ -138,10 +140,15 @@ class OpenUnmix(nn.Module):
         x = torch.tanh(x)
 
         # apply 3-layers of stacked LSTM
-        lstm_out = self.lstm(x)
+        # lstm_out = self.lstm(x)
+
+        tgt = torch.zeros(nb_frames, nb_samples, self.hidden_size).cuda()
+        transformer_out = self.transformer(x, tgt)
+        # print(transformer_out.size())
 
         # lstm skip connection
-        x = torch.cat([x, lstm_out[0]], -1)
+        # x = torch.cat([x, lstm_out[0]], -1)
+        x = torch.cat([x, transformer_out], -1)
 
         # first dense stage + batch norm
         x = self.fc2(x.reshape(-1, x.shape[-1]))

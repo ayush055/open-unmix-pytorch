@@ -310,7 +310,7 @@ def load_datasets(
             "seed": args.seed,
         }
         
-        print(args)
+        print("MUSDB ARGS\n", args)
 
         source_augmentations = aug_from_str(args.source_augmentations)
 

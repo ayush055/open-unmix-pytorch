@@ -17,6 +17,8 @@ from openunmix import model
 from openunmix import utils
 from openunmix import transforms
 
+from torchinfo import summary
+
 tqdm.monitor_interval = 0
 
 
@@ -43,6 +45,10 @@ def valid(args, unmix, encoder, device, valid_sampler):
     losses = utils.AverageMeter()
     unmix.eval()
     with torch.no_grad():
+        print(dir(valid_sampler))
+        print("Dataset:", valid_sampler.dataset)
+        print("Batch Size:", valid_sampler.batch_size)
+        print("Number of batches:", len(valid_sampler))
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
             X = encoder(x)
@@ -251,9 +257,15 @@ def main():
         scaler_mean = None
         scaler_std = None
     else:
-        scaler_mean, scaler_std = get_statistics(args, encoder, train_dataset)
+
+        print("REMEMBER TO UNCOMMENT GET STATISTICS")
+        scaler_mean = None
+        scaler_std = None
+
+        # scaler_mean, scaler_std = get_statistics(args, encoder, train_dataset)
 
     max_bin = utils.bandwidth_to_max_bin(train_dataset.sample_rate, args.nfft, args.bandwidth)
+    print("Max bin:", max_bin)
 
     if args.model:
         # fine tune model
@@ -317,6 +329,9 @@ def main():
     for epoch in t:
         t.set_description("Training epoch")
         end = time.time()
+
+        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)   
+        
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
         valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         scheduler.step(valid_loss)
