@@ -2,7 +2,7 @@ from typing import Optional
 import torch
 from torch import nn, Tensor
 import torch.nn.functional as F
-from torch.nn import TransformerDecoderLayer
+from torch.nn import TransformerDecoderLayer, Linear, BatchNorm1d
 import math
 
 class PositionalEncoding(nn.Module):
@@ -27,8 +27,15 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 class CustomTransformerDecoder(TransformerDecoderLayer):
-    def __init__(self):
-        super(CustomTransformerDecoder, self).__init__()
+    def __init__(self, tgt_bins, tgt_channels, decoder_fc_dim, d_model, nhead):
+        super(CustomTransformerDecoder, self).__init__(d_model=d_model, nhead=nhead)
+
+        self.tgt_bins = tgt_bins
+        self.tgt_channels = tgt_channels
+        self.decoder_fc_dim = decoder_fc_dim
+
+        self.fc_decoder = Linear(tgt_bins * tgt_channels, decoder_fc_dim, bias=False)
+        self.bn_decoder = BatchNorm1d(decoder_fc_dim)
 
     def forward(self, memory: Tensor, tgt: Optional[Tensor], tgt_mask: Optional[Tensor] = None, memory_mask: Optional[Tensor] = None,
                 tgt_key_padding_mask: Optional[Tensor] = None, memory_key_padding_mask: Optional[Tensor] = None) -> Tensor:
@@ -38,6 +45,15 @@ class CustomTransformerDecoder(TransformerDecoderLayer):
             x = x + self._mha_block(self.norm2(x), memory, memory_mask, memory_key_padding_mask)
             x = x + self._ff_block(self.norm3(x))
         elif tgt:
+
+            tgt_frames, tgt_samples, tgt_channels, tgt_bins = tgt.data.shape
+            print(tgt.size())
+            x = tgt
+            x = self.fc_decoder(x.reshape(-1, tgt_channels * tgt_bins))
+            x = self.bn_decoder(x)
+            x = x.reshape(tgt_frames, tgt_samples, self.decoder_fc_dim)
+            x = torch.tanh(x)
+
             x = self.norm1(x + self._sa_block(x, tgt_mask, tgt_key_padding_mask))
             x = self.norm2(x + self._mha_block(x, memory, memory_mask, memory_key_padding_mask))
             x = self.norm3(x + self._ff_block(x))
