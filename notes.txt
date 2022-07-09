@@ -1,0 +1,11 @@
+# To keep instance running when SSH disconnects
+
+tmux new-session -s session_name
+tmux list-sessions
+tmux attach-session -t session_name
+tmux kill-session -t session_name
+
+Detach from any session as described above: Ctrl+B, D.
+
+# Check when contents in a folder were modified
+ls -lt
