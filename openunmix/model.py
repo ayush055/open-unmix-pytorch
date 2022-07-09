@@ -5,10 +5,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer, LayerNorm, TransformerDecoder, PositionalEncoding
+from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer, LayerNorm, TransformerDecoder
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
-from .transformer import CustomTransformerDecoder
+from .transformer import CustomTransformerDecoder, PositionalEncoding
 
 
 class OpenUnmix(nn.Module):
