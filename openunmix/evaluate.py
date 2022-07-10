@@ -12,7 +12,6 @@ import tqdm
 
 from openunmix import utils
 
-
 def separate_and_evaluate(
     track: musdb.MultiTrack,
     targets: list,
@@ -150,12 +149,13 @@ if __name__ == "__main__":
 
     if args.cores > 1:
         # pool = multiprocessing.Pool(args.cores)
-        pool = Pool(args.cores)
 
         try:
             set_start_method('spawn')
         except RuntimeError:
             pass
+
+        pool = Pool(args.cores)
 
         results = museval.EvalStore()
         scores_list = list(
