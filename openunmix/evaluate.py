@@ -53,9 +53,7 @@ def separate_and_evaluate(
         mus.save_estimates(estimates, track, output_dir)
 
     scores = museval.eval_mus_track(track, estimates, output_dir=eval_dir)
-    print("EVAL_DIR:", eval_dir)
     return scores
-
 
 if __name__ == "__main__":
     # Training settings

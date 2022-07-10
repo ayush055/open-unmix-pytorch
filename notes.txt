@@ -12,3 +12,11 @@ ls -lt
 
 # Evaluate for single target
 sudo env "PATH=$PATH" python evaluate.py --model open-unmix --targets vocals  --root ~/musdb18hq --is-wav --residual acc --outdir ~/open-unmix-pytorch/results/baseline/
+
+# Evaluate using museval
+method = museval.MethodStore()
+method.load('open-unmix.pandas')
+method.agg_frames_tracks_scores()
+
+# Train
+python train.py --root ~/musdb18hq --target vocals --is-wav --nb-workers 16
