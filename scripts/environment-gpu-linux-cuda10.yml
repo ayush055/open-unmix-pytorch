@@ -1,8 +1,9 @@
 name: umx-gpu
 
 channels:
-  - conda-forge
+  - defaults
   - pytorch
+  - conda-forge
   - nvidia
 
 dependencies:
