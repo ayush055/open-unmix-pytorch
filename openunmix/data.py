@@ -855,8 +855,11 @@ class MUSDBDataset(UnmixDataset):
         # select track
         track = self.mus.tracks[index // self.samples_per_track]
 
+        # print("DATASET:", self.mus)
+
         # at training time we assemble a custom mix
         if self.split == "train" and self.seq_duration:
+            # print("SOURCES:", self.mus.setup['sources'])
             for k, source in enumerate(self.mus.setup["sources"]):
                 # memorize index of target source
                 if source == self.target:
@@ -865,6 +868,7 @@ class MUSDBDataset(UnmixDataset):
                 # select a random track
                 if self.random_track_mix:
                     track = random.choice(self.mus.tracks)
+                    # print("TRACK:", source)
 
                 # set the excerpt duration
 
@@ -872,7 +876,13 @@ class MUSDBDataset(UnmixDataset):
                 # set random start position
                 track.chunk_start = random.uniform(0, track.duration - self.seq_duration)
                 # load source audio and apply time domain source_augmentations
-                audio = torch.as_tensor(track.sources[source].audio.T, dtype=torch.float32)
+                audio, _ = load_audio(
+                    track.sources[source].path, start=track.chunk_start, dur=track.chunk_duration
+                )
+                audio = torch.as_tensor(audio, dtype=torch.float32)
+
+                # print("TRACK SPECIFIC:", track.sources[source].path)
+                # audio = torch.as_tensor(track.sources[source].audio.T, dtype=torch.float32)
                 audio = self.source_augmentations(audio)
                 audio_sources.append(audio)
 
@@ -893,8 +903,19 @@ class MUSDBDataset(UnmixDataset):
         # pre-mixed musdb track
         else:
             # get the non-linear source mix straight from musdb
-            x = torch.as_tensor(track.audio.T, dtype=torch.float32)
-            y = torch.as_tensor(track.targets[self.target].audio.T, dtype=torch.float32)
+
+            x, _ = load_audio(
+                    track.path
+                )
+            x = torch.as_tensor(x, dtype=torch.float32)
+
+            y, _ = load_audio(
+                    track.targets[self.target].path
+                )
+            y = torch.as_tensor(y, dtype=torch.float32)
+
+            # x = torch.as_tensor(track.audio.T, dtype=torch.float32)
+            # y = torch.as_tensor(track.targets[self.target].audio.T, dtype=torch.float32)
 
         return x, y
 

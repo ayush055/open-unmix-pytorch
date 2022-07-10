@@ -52,8 +52,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
             X = encoder(x)
-            Y_hat = unmix(X)
             Y = encoder(y)
+            Y_hat = unmix(X, Y)
             loss = torch.nn.functional.mse_loss(Y_hat, Y)
             losses.update(loss.item(), Y.size(1))
         return losses.avg
@@ -330,10 +330,10 @@ def main():
         t.set_description("Training epoch")
         end = time.time()
 
-        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)   
-        
+        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
+
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
-        valid_loss = valid(args, unmix, encoder, device, valid_sampler)
+        valid_loss = 0 #valid(args, unmix, encoder, device, valid_sampler)
         scheduler.step(valid_loss)
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
