@@ -9,3 +9,6 @@ Detach from any session as described above: Ctrl+B, D.
 
 # Check when contents in a folder were modified
 ls -lt
+
+# Evaluate for single target
+sudo env "PATH=$PATH" python evaluate.py --model open-unmix --targets vocals  --root ~/musdb18hq --is-wav --residual acc --outdir ~/open-unmix-pytorch/results/baseline/
