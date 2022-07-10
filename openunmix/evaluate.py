@@ -1,12 +1,13 @@
 import argparse
 import functools
 import json
-import multiprocessing
+# import multiprocessing
 from typing import Optional, Union
 
 import musdb
 import museval
 import torch
+from torch.multiprocessing import Pool, Process, set_start_method
 import tqdm
 
 from openunmix import utils
@@ -148,7 +149,14 @@ if __name__ == "__main__":
     aggregate_dict = None if args.aggregate is None else json.loads(args.aggregate)
 
     if args.cores > 1:
-        pool = multiprocessing.Pool(args.cores)
+        # pool = multiprocessing.Pool(args.cores)
+        pool = Pool(args.cores)
+
+        try:
+            set_start_method('spawn')
+        except RuntimeError:
+            pass
+
         results = museval.EvalStore()
         scores_list = list(
             pool.imap_unordered(
