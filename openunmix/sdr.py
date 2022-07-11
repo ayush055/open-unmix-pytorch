@@ -1,7 +1,13 @@
 import museval
 import argparse
 
-def main():
+def get_scores(model_name):
+    method = museval.MethodStore()
+    method.load('models/' + model_name + '.pandas')
+    method.agg_frames_tracks_scores()
+    return method.scores
+    
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MUSDB18 Evaluation", add_help=False)
 
     parser.add_argument(
@@ -12,6 +18,4 @@ def main():
 
     args = parser.parse_args()
 
-    method = museval.MethodStore()
-    method.load('models/' + args.model + '.pandas')
-    method.agg_frames_tracks_scores()
+    get_scores(args.model)
