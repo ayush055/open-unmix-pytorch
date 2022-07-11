@@ -160,7 +160,7 @@ class OpenUnmix(nn.Module):
         # squash range ot [-1, 1]
         x = torch.tanh(x)
         print("X shape after first fc layer:", x.size())
-        x = self.pos_encoder(x)
+        # x = self.pos_encoder(x)
 
         # apply 3-layers of stacked LSTM
         # lstm_out = self.lstm(x)
@@ -169,14 +169,14 @@ class OpenUnmix(nn.Module):
 
         y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
         # print(f"Y shape before encoder: {y.size()} \n {y}\n")
-        y = self.pos_encoder_1(y)
+        # y = self.pos_encoder_1(y)
         # print(f"Y shape after encoder: {y.size()} \n {y}")
         y = y.reshape(-1, y_channels * self.nb_bins)
         y = self.fc_decoder(y)
         y = self.bn_decoder(y)
         y = y.reshape(y_frames, y_samples, self.hidden_size)
         y = torch.tanh(y)
-        y = self.pos_encoder_2(y)
+        # y = self.pos_encoder_2(y)
 
         # print("Target:", tgt.size(), tgt)
 
