@@ -258,11 +258,11 @@ def main():
         scaler_std = None
     else:
 
-        print("REMEMBER TO UNCOMMENT GET STATISTICS")
-        scaler_mean = None
-        scaler_std = None
+        # print("REMEMBER TO UNCOMMENT GET STATISTICS")
+        # scaler_mean = None
+        # scaler_std = None
 
-        # scaler_mean, scaler_std = get_statistics(args, encoder, train_dataset)
+        scaler_mean, scaler_std = get_statistics(args, encoder, train_dataset)
 
     max_bin = utils.bandwidth_to_max_bin(train_dataset.sample_rate, args.nfft, args.bandwidth)
     print("Max bin:", max_bin)
@@ -333,7 +333,7 @@ def main():
         # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
 
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
-        valid_loss = 0 #valid(args, unmix, encoder, device, valid_sampler)
+        valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         scheduler.step(valid_loss)
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
