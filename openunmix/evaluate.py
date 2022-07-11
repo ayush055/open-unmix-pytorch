@@ -98,7 +98,8 @@ def separate_and_evaluate(
     separator.freeze()
     separator.to(device)
 
-    audio, _ = torch.as_tensor(load_audio(track.path), dtype=torch.float32, device=device)
+    audio, _ = load_audio(track.path)
+    audio = torch.as_tensor(audio, dtype=torch.float32, device=device)
     # audio = torch.as_tensor(track.audio, dtype=torch.float32, device=device)
     audio = utils.preprocess(audio, track.rate, separator.sample_rate)
 
