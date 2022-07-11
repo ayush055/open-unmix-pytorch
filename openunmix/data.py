@@ -324,7 +324,7 @@ def load_datasets(
         )
 
         valid_dataset = MUSDBDataset(
-            split="valid", samples_per_track=1, seq_duration=None, **dataset_kwargs
+            split="valid", samples_per_track=1, seq_duration=5, **dataset_kwargs
         )
 
     return train_dataset, valid_dataset, args

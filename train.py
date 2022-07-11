@@ -50,7 +50,6 @@ def valid(args, unmix, encoder, device, valid_sampler):
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
             X = encoder(x)
-            print(X.size())
             Y = encoder(y)
             Y_hat = unmix(X, Y)
             loss = torch.nn.functional.mse_loss(Y_hat, Y)
