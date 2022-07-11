@@ -62,14 +62,14 @@ class OpenUnmix(nn.Module):
         else:
             lstm_hidden_size = hidden_size // 2
 
-        self.lstm = LSTM(
-            input_size=hidden_size,
-            hidden_size=lstm_hidden_size,
-            num_layers=nb_layers,
-            bidirectional=not unidirectional,
-            batch_first=False,
-            dropout=0.4 if nb_layers > 1 else 0,
-        )
+        # self.lstm = LSTM(
+        #     input_size=hidden_size,
+        #     hidden_size=lstm_hidden_size,
+        #     num_layers=nb_layers,
+        #     bidirectional=not unidirectional,
+        #     batch_first=False,
+        #     dropout=0.4 if nb_layers > 1 else 0,
+        # )
 
         # custom_decoder_layer = CustomTransformerDecoder(nb_bins, nb_channels, hidden_size, d_model=hidden_size, nhead=8)
         # decoder_norm = LayerNorm(hidden_size, eps=1e-5)
