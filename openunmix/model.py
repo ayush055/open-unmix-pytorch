@@ -55,7 +55,7 @@ class OpenUnmix(nn.Module):
 
         self.bn1 = BatchNorm1d(hidden_size)
 
-        # self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.1)
+        self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.1)
 
         if unidirectional:
             lstm_hidden_size = hidden_size
@@ -74,10 +74,10 @@ class OpenUnmix(nn.Module):
         # custom_decoder_layer = CustomTransformerDecoder(nb_bins, nb_channels, hidden_size, d_model=hidden_size, nhead=8)
         # decoder_norm = LayerNorm(hidden_size, eps=1e-5)
         # self.decoder = TransformerDecoder(decoder_layer=custom_decoder_layer, num_layers=6, norm=decoder_norm)
-        # self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.1)
+        self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.1)
         self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
         self.bn_decoder = BatchNorm1d(hidden_size)
-        # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.1)
+        self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.1)
         self.transformer = Transformer(d_model=hidden_size, nhead=4, num_encoder_layers=3, num_decoder_layers=3)
 
         fc2_hiddensize = hidden_size * 2
@@ -160,7 +160,7 @@ class OpenUnmix(nn.Module):
         # squash range ot [-1, 1]
         x = torch.tanh(x)
         print("X shape after first fc layer:", x.size())
-        # x = self.pos_encoder(x)
+        x = self.pos_encoder(x)
 
         # apply 3-layers of stacked LSTM
         # lstm_out = self.lstm(x)
@@ -169,14 +169,14 @@ class OpenUnmix(nn.Module):
 
         y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
         # print(f"Y shape before encoder: {y.size()} \n {y}\n")
-        # y = self.pos_encoder_1(y)
+        y = self.pos_encoder_1(y)
         # print(f"Y shape after encoder: {y.size()} \n {y}")
         y = y.reshape(-1, y_channels * self.nb_bins)
         y = self.fc_decoder(y)
         y = self.bn_decoder(y)
         y = y.reshape(y_frames, y_samples, self.hidden_size)
         y = torch.tanh(y)
-        # y = self.pos_encoder_2(y)
+        y = self.pos_encoder_2(y)
 
         # print("Target:", tgt.size(), tgt)
 
