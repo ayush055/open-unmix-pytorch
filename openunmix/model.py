@@ -78,7 +78,7 @@ class OpenUnmix(nn.Module):
         self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
         self.bn_decoder = BatchNorm1d(hidden_size)
         # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.1)
-        self.transformer = Transformer(d_model=hidden_size)
+        self.transformer = Transformer(d_model=hidden_size, nhead=1, num_encoder_layers=1, num_decoder_layers=1)
 
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
