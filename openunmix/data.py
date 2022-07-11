@@ -909,8 +909,10 @@ class MUSDBDataset(UnmixDataset):
                 )
             x = torch.as_tensor(x, dtype=torch.float32)
 
+            # print("TRACK", dir(track), "\nTARGET TRACK", dir(track.sources[self.target]))
+
             y, _ = load_audio(
-                    track.targets[self.target].path
+                    track.sources[self.target].path
                 )
             y = torch.as_tensor(y, dtype=torch.float32)
 
