@@ -1,4 +1,4 @@
-# To keep instance running when SSH disconnects
+#  To keep instance running when SSH disconnects
 
 tmux new-session -s session_name
 tmux list-sessions
