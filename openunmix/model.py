@@ -9,6 +9,7 @@ from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer, LayerNor
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 from .transformer import CustomTransformerDecoder, PositionalEncoding
+from cnn import CNNModel
 
 
 class OpenUnmix(nn.Module):
@@ -51,11 +52,13 @@ class OpenUnmix(nn.Module):
 
         self.hidden_size = hidden_size
 
-        self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
+        # self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
 
-        self.bn1 = BatchNorm1d(hidden_size)
+        # self.bn1 = BatchNorm1d(hidden_size)
 
-        self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.1)
+        # self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.1)
+
+        self.cnn = CNNModel(hidden_size)
 
         if unidirectional:
             lstm_hidden_size = hidden_size
@@ -74,11 +77,11 @@ class OpenUnmix(nn.Module):
         # custom_decoder_layer = CustomTransformerDecoder(nb_bins, nb_channels, hidden_size, d_model=hidden_size, nhead=8)
         # decoder_norm = LayerNorm(hidden_size, eps=1e-5)
         # self.decoder = TransformerDecoder(decoder_layer=custom_decoder_layer, num_layers=6, norm=decoder_norm)
-        self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.1)
-        self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
-        self.bn_decoder = BatchNorm1d(hidden_size)
-        self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.1)
-        self.transformer = Transformer(d_model=hidden_size)
+        # self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.1)
+        # self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
+        # self.bn_decoder = BatchNorm1d(hidden_size)
+        # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.1)
+        # self.transformer = Transformer(d_model=hidden_size)
 
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
@@ -153,41 +156,42 @@ class OpenUnmix(nn.Module):
         # and encode to (nb_frames*nb_samples, hidden_size)
 
         # print("X shape before first fc layer:", x.size())
-        x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
+        # x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
         # normalize every instance in a batch
-        x = self.bn1(x)
-        x = x.reshape(nb_frames, nb_samples, self.hidden_size)
+        # x = self.bn1(x)
+        # x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range ot [-1, 1]
-        x = torch.tanh(x)
-        print("X shape after first fc layer:", x.size())
-        x = self.pos_encoder(x)
+        # x = torch.tanh(x)
+        # print("X shape after first fc layer:", x.size())
+        # x = self.pos_encoder(x)
 
+        x = self.cnn(x)
         # apply 3-layers of stacked LSTM
-        # lstm_out = self.lstm(x)
+        lstm_out = self.lstm(x)
 
         # print("Y shape before fc layer:", y.size())
 
-        y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
+        # y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
         # print(f"Y shape before encoder: {y.size()} \n {y}\n")
-        y = self.pos_encoder_1(y)
+        # y = self.pos_encoder_1(y)
         # print(f"Y shape after encoder: {y.size()} \n {y}")
-        y = y.reshape(-1, y_channels * self.nb_bins)
-        y = self.fc_decoder(y)
-        y = self.bn_decoder(y)
-        y = y.reshape(y_frames, y_samples, self.hidden_size)
-        y = torch.tanh(y)
-        y = self.pos_encoder_2(y)
+        # y = y.reshape(-1, y_channels * self.nb_bins)
+        # y = self.fc_decoder(y)
+        # y = self.bn_decoder(y)
+        # y = y.reshape(y_frames, y_samples, self.hidden_size)
+        # y = torch.tanh(y)
+        # y = self.pos_encoder_2(y)
 
         # print("Target:", tgt.size(), tgt)
 
         # print("Y shape transformed:", y.shape)
         # tgt = torch.zeros(nb_frames, nb_samples, self.hidden_size).cuda()
-        transformer_out = self.transformer(x, y)
+        # transformer_out = self.transformer(x, y)
         # print(transformer_out.size())
 
         # lstm skip connection
-        # x = torch.cat([x, lstm_out[0]], -1)
-        x = torch.cat([x, transformer_out], -1)
+        x = torch.cat([x, lstm_out[0]], -1)
+        # x = torch.cat([x, transformer_out], -1)
 
         # first dense stage + batch norm
         x = self.fc2(x.reshape(-1, x.shape[-1]))
