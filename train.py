@@ -55,6 +55,9 @@ def valid(args, unmix, encoder, device, valid_sampler):
             loss = torch.nn.functional.mse_loss(Y_hat, Y)
             losses.update(loss.item(), Y.size(1))
             del x, y, X, Y, Y_hat
+            torch.cuda.empty_cache()
+            print(torch.cuda.memory_allocated())
+            print(torch.cuda.memory_reserved())
         return losses.avg
 
 
