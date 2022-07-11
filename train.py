@@ -43,7 +43,6 @@ def valid(args, unmix, encoder, device, valid_sampler):
     losses = utils.AverageMeter()
     unmix.eval()
     with torch.no_grad():
-        print(dir(valid_sampler))
         print("Dataset:", valid_sampler.dataset)
         print("Batch Size:", valid_sampler.batch_size)
         print("Number of batches:", len(valid_sampler))
@@ -51,7 +50,6 @@ def valid(args, unmix, encoder, device, valid_sampler):
             x, y = x.to(device), y.to(device)
             X = encoder(x)
             Y = encoder(y)
-            print("Memory used:", torch.cuda.memory_reserved(0))
             Y_hat = unmix(X, Y)
             loss = torch.nn.functional.mse_loss(Y_hat, Y)
             losses.update(loss.item(), Y.size(1))
@@ -283,9 +281,7 @@ def main():
             max_bin=max_bin,
         ).to(device)
 
-    # optimizer = torch.optim.Adam(unmix.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    optimizer = torch.optim.AdamW(unmix.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-
+    optimizer = torch.optim.Adam(unmix.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
