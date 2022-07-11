@@ -5,10 +5,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer, LayerNorm, TransformerDecoder
+from torch.nn import LSTM, BatchNorm1d, Linear, Parameter#, Transformer, LayerNorm, TransformerDecoder
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
-from .transformer import CustomTransformerDecoder, PositionalEncoding
+# from .transformer import CustomTransformerDecoder, PositionalEncoding
+from reformer_pytorch.reformer_pytorch import ReformerLM, Autopadder
 
 
 class OpenUnmix(nn.Module):
@@ -55,8 +56,6 @@ class OpenUnmix(nn.Module):
 
         self.bn1 = BatchNorm1d(hidden_size)
 
-        self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.1)
-
         if unidirectional:
             lstm_hidden_size = hidden_size
         else:
@@ -71,14 +70,36 @@ class OpenUnmix(nn.Module):
             dropout=0.4 if nb_layers > 1 else 0,
         )
 
+        DE_SEQ_LEN = 624
+        EN_SEQ_LEN = 20000
+
+        self.encoder = ReformerLM(
+            num_tokens = 512,
+            emb_dim = 624,
+            dim = 1024,
+            depth = 12,
+            heads = 8,
+            max_seq_len = DE_SEQ_LEN,
+            fixed_position_emb = True,
+            return_embeddings = True # return output of last attention layer
+        )
+
+        self.encoder = Autopadder(self.encoder)
+
+        self.decoder = ReformerLM(
+            num_tokens = 20000,
+            emb_dim = self.nb_bins * nb_channels,
+            dim = 1024,
+            depth = 12,
+            heads = 8,
+            max_seq_len = EN_SEQ_LEN,
+            fixed_position_emb = True,
+            causal = True
+        )
+
         # custom_decoder_layer = CustomTransformerDecoder(nb_bins, nb_channels, hidden_size, d_model=hidden_size, nhead=8)
         # decoder_norm = LayerNorm(hidden_size, eps=1e-5)
         # self.decoder = TransformerDecoder(decoder_layer=custom_decoder_layer, num_layers=6, norm=decoder_norm)
-        self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.1)
-        self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
-        self.bn_decoder = BatchNorm1d(hidden_size)
-        self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.1)
-        self.transformer = Transformer(d_model=hidden_size)
 
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
@@ -159,34 +180,29 @@ class OpenUnmix(nn.Module):
         x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range ot [-1, 1]
         x = torch.tanh(x)
-        x = self.pos_encoder(x)
 
         # apply 3-layers of stacked LSTM
         # lstm_out = self.lstm(x)
 
         # print("Y shape before fc layer:", y.size())
 
-        y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
-        # print(f"Y shape before encoder: {y.size()} \n {y}\n")
-        y = self.pos_encoder_1(y)
-        # print(f"Y shape after encoder: {y.size()} \n {y}")
-        y = y.reshape(-1, y_channels * self.nb_bins)
-        y = self.fc_decoder(y)
-        y = self.bn_decoder(y)
-        y = y.reshape(y_frames, y_samples, self.hidden_size)
-        y = torch.tanh(y)
-        y = self.pos_encoder_2(y)
+        print("X shape before encoder:", x.size())
+        enc_keys = self.encoder(x)
 
+        y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
+        reformer_out = self.decoder(y, keys=enc_keys)
+        # print(f"Y shape before encoder: {y.size()} \n {y}\n")
+        # print(f"Y shape after encoder: {y.size()} \n {y}")
+        
         # print("Target:", tgt.size(), tgt)
 
         # print("Y shape transformed:", y.shape)
         # tgt = torch.zeros(nb_frames, nb_samples, self.hidden_size).cuda()
-        transformer_out = self.transformer(x, y)
         # print(transformer_out.size())
 
         # lstm skip connection
         # x = torch.cat([x, lstm_out[0]], -1)
-        x = torch.cat([x, transformer_out], -1)
+        x = torch.cat([x, reformer_out], -1)
 
         # first dense stage + batch norm
         x = self.fc2(x.reshape(-1, x.shape[-1]))
