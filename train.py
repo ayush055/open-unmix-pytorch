@@ -17,8 +17,6 @@ from openunmix import model
 from openunmix import utils
 from openunmix import transforms
 
-from torchinfo import summary
-
 tqdm.monitor_interval = 0
 
 
