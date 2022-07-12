@@ -43,6 +43,7 @@ class Transformer(nn.Module):
         num_encoder_layers,
         num_decoder_layers,
         dropout_p,
+        activation_fn,
     ):
         super().__init__()
 
@@ -61,6 +62,7 @@ class Transformer(nn.Module):
             num_encoder_layers=num_encoder_layers,
             num_decoder_layers=num_decoder_layers,
             dropout=dropout_p,
+            activation=activation_fn,
         )
         self.out = nn.Linear(dim_model, num_tokens)
         
