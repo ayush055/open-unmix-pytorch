@@ -41,6 +41,8 @@ class OpenUnmix(nn.Module):
         max_bin: Optional[int] = None,
     ):
         super(OpenUnmix, self).__init__()
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         self.nb_output_bins = nb_bins
         if max_bin:
@@ -74,10 +76,10 @@ class OpenUnmix(nn.Module):
         # decoder_norm = LayerNorm(hidden_size, eps=1e-5)
         # self.decoder = TransformerDecoder(decoder_layer=custom_decoder_layer, num_layers=6, norm=decoder_norm)
         # self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.25)
+        # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
         self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
         self.bn_decoder = BatchNorm1d(hidden_size)
-        # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
-        self.transformer = Transformer(num_tokens=512, dim_model=512, num_heads=4, num_encoder_layers=2, num_decoder_layers=2, dropout_p=0.5, activation_fn='gelu')
+        self.transformer = Transformer(num_tokens=514, dim_model=514, num_heads=4, num_encoder_layers=2, num_decoder_layers=2, dropout_p=0.5, activation_fn='gelu')
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
 
@@ -157,6 +159,15 @@ class OpenUnmix(nn.Module):
         x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range ot [-1, 1]
         x = torch.tanh(x)
+
+        x = x.reshape(nb_samples * nb_frames, self.hidden_size)
+        SOS_TOKEN = torch.full((x.size(0), 1), 2, dtype=torch.float32)
+        EOS_TOKEN = torch.full((x.size(0), 1), 3, dtype=torch.float32)
+
+        SOS_TOKEN = SOS_TOKEN.to(x.device)
+        EOS_TOKEN = EOS_TOKEN.to(x.device)
+
+        x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=-1)
         # print("X shape after first fc layer:", x.size())
         # x = self.pos_encoder(x)
 
@@ -166,21 +177,47 @@ class OpenUnmix(nn.Module):
         # print("Y shape before fc layer:", y.size())
 
         y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
+
+        y = y.reshape(-1, y_channels * self.nb_bins)
+        # y = self.fc_decoder(y)
+        # y = self.bn_decoder(y)
+
+        # y = y.reshape(y_frames, y_samples, 512)
+        # y = y.reshape(y_frames * y_samples, 512)
+
+        SOS_TOKEN = torch.full((y.size(0), 1), 2, dtype=torch.float32)
+        EOS_TOKEN = torch.full((y.size(0), 1), 3, dtype=torch.float32)
+
+        SOS_TOKEN = SOS_TOKEN.to(y.device)
+        EOS_TOKEN = EOS_TOKEN.to(y.device)
+
+        y = torch.cat((SOS_TOKEN, y, EOS_TOKEN), dim=-1)
+
+        y_input = y[:, :-1]
+
+        sequence_length = y_input.size(1)
+        print(y_input.size())
+        print(sequence_length)
+        tgt_mask = self.transformer.get_tgt_mask(sequence_length).to(self.device)
+        y_size = (y_frames, y_samples, y_input.size(-1))
+        x_size = (nb_frames, nb_samples, x.size(-1))
+        # y = torch.tanh(y)
+        
         # print(f"Y shape before encoder: {y.size()} \n {y}\n")
         # y = self.pos_encoder_1(y)
         # print(f"Y shape after encoder: {y.size()} \n {y}")
-        y = y.reshape(-1, y_channels * self.nb_bins)
-        y = self.fc_decoder(y)
-        y = self.bn_decoder(y)
-        y = y.reshape(y_frames, y_samples, self.hidden_size)
-        y = torch.tanh(y)
+        # y = y.reshape(-1, y_channels * self.nb_bins)
+        # y = self.fc_decoder(y)
+        # y = self.bn_decoder(y)
+        # y = y.reshape(y_frames, y_samples, self.hidden_size)
+        # y = torch.tanh(y)
         # y = self.pos_encoder_2(y)
 
         # print("Target:", tgt.size(), tgt)
 
         # print("Y shape transformed:", y.shape)
         # tgt = torch.zeros(nb_frames, nb_samples, self.hidden_size).cuda()
-        transformer_out = self.transformer(x, y)
+        transformer_out = self.transformer(x, y_input, tgt_mask, src_size=x_size, tgt_size=y_size)
         # print(transformer_out.size())
 
         # lstm skip connection

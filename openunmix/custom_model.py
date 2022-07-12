@@ -66,11 +66,14 @@ class Transformer(nn.Module):
         )
         self.out = nn.Linear(dim_model, num_tokens)
         
-    def forward(self, src, tgt, tgt_mask=None, src_pad_mask=None, tgt_pad_mask=None):
+    def forward(self, src, tgt, tgt_mask=None, src_pad_mask=None, tgt_pad_mask=None, src_size=None, tgt_size=None):
         # Src size must be (batch_size, src sequence length)
         # Tgt size must be (batch_size, tgt sequence length)
 
         # Embedding + positional encoding - Out size = (batch_size, sequence length, dim_model)
+        src = src.view(src_size)
+        tgt = tgt.view(tgt_size)
+        
         src = src * math.sqrt(self.dim_model)
         tgt = tgt * math.sqrt(self.dim_model)
         src = self.positional_encoder(src)
