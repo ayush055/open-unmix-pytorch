@@ -5,10 +5,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torch.nn import LSTM, BatchNorm1d, Linear, Parameter
+from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
-from .custom_model import Transformer
 
 class OpenUnmix(nn.Module):
     """OpenUnmix Core spectrogram based separation module.
@@ -76,10 +75,17 @@ class OpenUnmix(nn.Module):
         # decoder_norm = LayerNorm(hidden_size, eps=1e-5)
         # self.decoder = TransformerDecoder(decoder_layer=custom_decoder_layer, num_layers=6, norm=decoder_norm)
         # self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.25)
-        # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
+        self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
         self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
         self.bn_decoder = BatchNorm1d(hidden_size)
-        self.transformer = Transformer(num_tokens=514, dim_model=514, num_heads=4, num_encoder_layers=2, num_decoder_layers=2, dropout_p=0.5, activation_fn='gelu')
+        self.transformer = Transformer(
+            d_model=hidden_size + 2, # 2 for EOS and SOS tokens
+            nhead=4,
+            num_encoder_layers=2,
+            num_decoder_layers=2,
+            dropout=0.5,
+            activation='gelu',
+        )
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
 
@@ -116,7 +122,7 @@ class OpenUnmix(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, x: Tensor, y: Tensor) -> Tensor:
+    def forward(self, x: Tensor, y: Tensor, tgt_mask=tgt_mask) -> Tensor:
         """
         Args:
             x: input spectrogram of shape
@@ -131,6 +137,9 @@ class OpenUnmix(nn.Module):
         x = x.permute(3, 0, 1, 2)
         y = y.permute(3, 0, 1, 2)
         # get current spectrogram shape
+
+        # samples (batch size), frames (duration of sequence, each frame is a time-bin of the STFT (~20ms for 5s duration, 255 frames), channels * bins is our frequency data
+
         nb_frames, nb_samples, nb_channels, nb_bins = x.data.shape
         y_frames, y_samples, y_channels, y_bins = y.data.shape
         # print("X shape:", nb_frames, nb_samples, nb_channels, nb_bins)
@@ -157,17 +166,25 @@ class OpenUnmix(nn.Module):
         # normalize every instance in a batch
         x = self.bn1(x)
         x = x.reshape(nb_frames, nb_samples, self.hidden_size)
-        # squash range ot [-1, 1]
+        # squash range to [-1, 1]
         x = torch.tanh(x)
 
-        x = x.reshape(nb_samples * nb_frames, self.hidden_size)
+        x = np.swapaxes(x, 0, 1)
+
         SOS_TOKEN = torch.full((x.size(0), 1), 2, dtype=torch.float32)
         EOS_TOKEN = torch.full((x.size(0), 1), 3, dtype=torch.float32)
-
         SOS_TOKEN = SOS_TOKEN.to(x.device)
         EOS_TOKEN = EOS_TOKEN.to(x.device)
 
         x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=-1)
+
+        x = np.swapaxes(x, 0, 1)
+
+        x = self.pos_encoder_2(x)
+
+        x = x.reshape(nb_samples * nb_frames, self.hidden_size)
+
+
         # print("X shape after first fc layer:", x.size())
         # x = self.pos_encoder(x)
 
@@ -178,20 +195,27 @@ class OpenUnmix(nn.Module):
 
         y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
 
-        y = y.reshape(-1, y_channels * self.nb_bins)
+
         # y = self.fc_decoder(y)
         # y = self.bn_decoder(y)
 
         # y = y.reshape(y_frames, y_samples, 512)
         # y = y.reshape(y_frames * y_samples, 512)
 
+        y = np.swapaxes(y, 0, 1)
+
         SOS_TOKEN = torch.full((y.size(0), 1), 2, dtype=torch.float32)
         EOS_TOKEN = torch.full((y.size(0), 1), 3, dtype=torch.float32)
-
         SOS_TOKEN = SOS_TOKEN.to(y.device)
         EOS_TOKEN = EOS_TOKEN.to(y.device)
 
         y = torch.cat((SOS_TOKEN, y, EOS_TOKEN), dim=-1)
+
+        y = np.swapaxes(y, 0, 1)
+
+        y = self.pos_encoder_2(y)
+
+        y = y.reshape(-1, y_channels * self.nb_bins)
 
         y_input = y[:, :-1]
 
@@ -245,6 +269,22 @@ class OpenUnmix(nn.Module):
         x = F.relu(x) * mix
         # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
         return x.permute(1, 2, 3, 0)
+
+    def get_tgt_mask(self, size) -> torch.tensor:
+        # Generates a squeare matrix where the each row allows one word more to be seen
+        mask = torch.tril(torch.ones(size, size) == 1) # Lower triangular matrix
+        mask = mask.float()
+        mask = mask.masked_fill(mask == 0, float('-inf')) # Convert zeros to -inf
+        mask = mask.masked_fill(mask == 1, float(0.0)) # Convert ones to 0
+
+        # EX for size=5:
+        # [[0., -inf, -inf, -inf, -inf],
+        #  [0.,   0., -inf, -inf, -inf],
+        #  [0.,   0.,   0., -inf, -inf],
+        #  [0.,   0.,   0.,   0., -inf],
+        #  [0.,   0.,   0.,   0.,   0.]]
+
+        return mask
 
 
 class Separator(nn.Module):
