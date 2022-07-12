@@ -1,4 +1,4 @@
-#  To keep instance running when SSH disconnects
+# To keep instance running when SSH disconnects
 
 tmux new-session -s session_name
 tmux list-sessions
@@ -14,10 +14,10 @@ ls -lt
 sudo env "PATH=$PATH" python evaluate.py --model [MODEL_NAME] --targets vocals  --root ~/musdb18hq --is-wav --residual acc --outdir results/[MODEL_NAME] --evaldir eval/[MODEL_NAME]
 
 # Train
-python train.py --root ~/musdb18hq --target vocals --is-wav --nb-workers 16
+python train.py --root ~/musdb18hq --target vocals --is-wav --nb-workers 16 --outdir models/[MODEL_NAME]
 
 # Evaluate using museval
-    python openunmix/sdr.py --model [MODEL_NAME]
+python openunmix/sdr.py --model [MODEL_NAME]
 
 # Copy from EC2 to local
 pscp -i [PATH_TO_PUBLIC_KEY] [IP_ADDRESS]:"/home/ubuntu/open-unmix-pytorch2/results/baseline/test/AM Contra - Heart Peripheral/accompaniment.wav" C:\Ayush

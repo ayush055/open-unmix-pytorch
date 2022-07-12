@@ -8,8 +8,8 @@ from torch import Tensor
 from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer, LayerNorm, TransformerDecoder
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
-from .transformer import CustomTransformerDecoder, PositionalEncoding
-
+from torch.autograd import Variable
+# from .transformer import CustomTransformerDecoder, PositionalEncoding
 
 class OpenUnmix(nn.Module):
     """OpenUnmix Core spectrogram based separation module.
@@ -51,7 +51,47 @@ class OpenUnmix(nn.Module):
 
         self.hidden_size = hidden_size
 
-        self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
+        """ Replace fully connected layer with CNN
+
+        Architecture:
+            convolutional layers, pooling layers, fc layers
+    
+        in_channels = 2 (stereo tracks)
+        out_channels = 18 (idk why)
+        dilation = 1
+
+        nb_bins = 1487
+        nb_frames = 255
+        nb_channels = 2
+
+        conv1: input (16, nb_channels, nb_bins, nb_frames)
+            output (16, nb_channels, 743, 127)
+
+        conv2: input(16, nb_channels, 743, 127)
+            output (16, nb_channels, 371, 63)
+
+        conv3: input (16, nb_channels, 371, 63)
+            output (16, nb_channels, 185, 31)
+
+        conv4: input (16, nb_channels, 185, 31)
+            output (16, nb_channels, 92, 15)
+
+        pool: output(16, nb_channels, 92 - 1, 15 - 1)
+
+        """
+
+        # self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
+
+        self.conv1 = torch.nn.Conv2d(2, 18, kernel_size = 5, stride = 2, padding = 1)
+        self.conv2 = torch.nn.Conv2d(18, 18, kernel_size = 5, stride = 2, padding = 1)
+        self.conv3 = torch.nn.Conv2d(18, 18, kernel_size = 5, stride = 2, padding = 1)
+        self.conv4 = torch.nn.Conv2d(18, 18, kernel_size = 5, stride = 2, padding = 1)
+        self.pool = torch.nn.MaxPool2d(kernel_size = 2, stride = 1, padding = 0)
+
+        self.flatten = nn.Flatten()
+
+        self.fc1 = torch.nn.Linear(18 * 91 * 14, 64)
+        self.fc2 = torch.nn.Linear(64, 10)
 
         self.bn1 = BatchNorm1d(hidden_size)
 
@@ -81,11 +121,11 @@ class OpenUnmix(nn.Module):
         self.transformer = Transformer(d_model=hidden_size)
 
         fc2_hiddensize = hidden_size * 2
-        self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
+        self.fc3 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
 
         self.bn2 = BatchNorm1d(hidden_size)
 
-        self.fc3 = Linear(
+        self.fc4 = Linear(
             in_features=hidden_size,
             out_features=self.nb_output_bins * nb_channels,
             bias=False,
@@ -151,6 +191,18 @@ class OpenUnmix(nn.Module):
 
         # to (nb_frames*nb_samples, nb_channels*nb_bins)
         # and encode to (nb_frames*nb_samples, hidden_size)
+        # x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
+        
+        # apply CNN
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
+        x = self.pool(x)
+        x = self.flatten(x)
+        x = F.relu(self.fc1(x))
+        # size changes from (1, 64) to (1, 10)
+        x = self.fc2(x)
 
         # print("X shape before first fc layer:", x.size())
         x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
@@ -190,13 +242,13 @@ class OpenUnmix(nn.Module):
         x = torch.cat([x, transformer_out], -1)
 
         # first dense stage + batch norm
-        x = self.fc2(x.reshape(-1, x.shape[-1]))
+        x = self.fc3(x.reshape(-1, x.shape[-1]))
         x = self.bn2(x)
 
         x = F.relu(x)
 
         # second dense stage + layer norm
-        x = self.fc3(x)
+        x = self.fc4(x)
         x = self.bn3(x)
 
         # reshape back to original dim
