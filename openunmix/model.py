@@ -53,7 +53,7 @@ class OpenUnmix(nn.Module):
         # print(f"nb_bins: {self.nb_bins}")
         # print(f"nb_output_bins: {self.nb_output_bins}")
 
-        # self.hidden_size = hidden_size
+        self.hidden_size = hidden_size
         
         self.encoder = Reformer(
             dim = hidden_size,
