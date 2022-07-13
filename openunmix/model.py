@@ -105,6 +105,9 @@ class OpenUnmix(nn.Module):
         self.resnet = models.resnet50(pretrained=True)
         self.resnet.fc = nn.Sequential(nn.Linear(self.resnet.fc.in_features, hidden_size))
 
+        # fully connected layer between the conv and lstm layers
+        self.fc1 = Linear(in_features=hidden_size, out_features=hidden_size, bias=False)
+
         # maybe comment this out idk
         self.bn1 = BatchNorm1d(hidden_size)
 
@@ -230,6 +233,7 @@ class OpenUnmix(nn.Module):
         # x = x.expand(x.size(0), 3, x.size(2), x.size(3))
         print(x.size())
         x = self.resnet(x)
+        print('shape of x: ', x.shape)
         lstm_out = self.lstm(x.unsqueeze(0))
 
         # print("X shape before first fc layer:", x.size())
@@ -238,7 +242,6 @@ class OpenUnmix(nn.Module):
         x = self.bn1(x)
         # x = x.reshape(nb_frames, nb_samples, x.size()/nb_frames/nb_samples)
         # x = x.reshape(nb_frames, nb_samples, self.hidden_size)
-        print('shape of x: ', x.shape)
         # x = x.reshape(nb_frames, nb_samples, 2)
         # squash range ot [-1, 1]
         x = torch.tanh(x)
