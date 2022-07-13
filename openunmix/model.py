@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer, LayerNorm, TransformerDecoder
+from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer, LayerNorm, TransformerEncoderLayer, TransformerEncoder
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 from .transformer import CustomTransformerDecoder, PositionalEncoding
@@ -78,7 +78,10 @@ class OpenUnmix(nn.Module):
         self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
         self.bn_decoder = BatchNorm1d(hidden_size)
         self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
-        self.transformer = Transformer(d_model=hidden_size, nhead=4, num_encoder_layers=3, num_decoder_layers=3, dropout=0.5)
+        # self.transformer = Transformer(d_model=hidden_size, nhead=4, num_encoder_layers=3, num_decoder_layers=3, dropout=0.5)
+
+        self.encoder_layer = TransformerEncoderLayer(d_model=512, nhead=8, dropout=0.5, activation="gelu")
+        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=6)
 
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
@@ -116,7 +119,7 @@ class OpenUnmix(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, x: Tensor, y: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         """
         Args:
             x: input spectrogram of shape
@@ -129,10 +132,8 @@ class OpenUnmix(nn.Module):
 
         # permute so that batch is last for lstm
         x = x.permute(3, 0, 1, 2)
-        y = y.permute(3, 0, 1, 2)
         # get current spectrogram shape
         nb_frames, nb_samples, nb_channels, nb_bins = x.data.shape
-        y_frames, y_samples, y_channels, y_bins = y.data.shape
         # print("X shape:", nb_frames, nb_samples, nb_channels, nb_bins)
         # print("Y shape:", y_frames, y_samples, y_channels, y_bins)
 
@@ -140,14 +141,9 @@ class OpenUnmix(nn.Module):
 
         # crop
         x = x[..., : self.nb_bins]
-        y = y[..., : self.nb_bins]
         # shift and scale input to mean=0 std=1 (across all bins)
         x = x + self.input_mean
         x = x * self.input_scale
-
-        y = y + self.input_mean
-        y = y * self.input_scale        
-
 
         # to (nb_frames*nb_samples, nb_channels*nb_bins)
         # and encode to (nb_frames*nb_samples, hidden_size)
@@ -167,22 +163,22 @@ class OpenUnmix(nn.Module):
 
         # print("Y shape before fc layer:", y.size())
 
-        y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
+        # y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
         # print(f"Y shape before encoder: {y.size()} \n {y}\n")
-        y = self.pos_encoder_1(y)
+        # y = self.pos_encoder_1(y)
         # print(f"Y shape after encoder: {y.size()} \n {y}")
-        y = y.reshape(-1, y_channels * self.nb_bins)
-        y = self.fc_decoder(y)
-        y = self.bn_decoder(y)
-        y = y.reshape(y_frames, y_samples, self.hidden_size)
-        y = torch.tanh(y)
-        y = self.pos_encoder_2(y)
-
+        # y = y.reshape(-1, y_channels * self.nb_bins)
+        # y = self.fc_decoder(y)
+        # y = self.bn_decoder(y)
+        # y = y.reshape(y_frames, y_samples, self.hidden_size)
+        # y = torch.tanh(y)
+        # y = self.pos_encoder_2(y)
+    
         # print("Target:", tgt.size(), tgt)
 
         # print("Y shape transformed:", y.shape)
         # tgt = torch.zeros(nb_frames, nb_samples, self.hidden_size).cuda()
-        transformer_out = self.transformer(x, y)
+        transformer_out = self.transformer_encoder(x)
         # print(transformer_out.size())
 
         # lstm skip connection

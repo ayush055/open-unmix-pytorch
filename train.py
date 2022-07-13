@@ -30,7 +30,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         optimizer.zero_grad()
         X = encoder(x)
         Y = encoder(y)
-        Y_hat = unmix(X, Y)
+        Y_hat = unmix(X)
         loss = torch.nn.functional.mse_loss(Y_hat, Y)
         loss.backward()
         optimizer.step()
