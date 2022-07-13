@@ -273,7 +273,7 @@ class OpenUnmix(nn.Module):
         # x = torch.cat([x, transformer_out], -1)
 
         # first dense stage + batch norm
-        x = self.flatten()
+        x = self.flatten(x)
         x = self.fc3(x.reshape(-1, x.shape[-1]))
         x = self.bn2(x)
 
