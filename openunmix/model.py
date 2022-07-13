@@ -262,7 +262,7 @@ class OpenUnmix(nn.Module):
 
         # print("Y shape transformed:", y.shape)
         # tgt = torch.zeros(nb_frames, nb_samples, self.hidden_size).cuda()
-        transformer_out = self.transformer(x, y)
+        # transformer_out = self.transformer(x, y)
         # print(transformer_out.size())
 
         # lstm skip connection
