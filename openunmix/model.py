@@ -237,8 +237,8 @@ class OpenUnmix(nn.Module):
         # x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
         # normalize every instance in a batch
         x = self.bn1(x)
-        x = x.reshape(nb_frames, nb_samples, x.size()/nb_frames/nb_samples)
-        # x = x.reshape(nb_frames, nb_samples, self.hidden_size)
+        # x = x.reshape(nb_frames, nb_samples, x.size()/nb_frames/nb_samples)
+        x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range ot [-1, 1]
         x = torch.tanh(x)
         print("X shape after first fc layer:", x.size())
