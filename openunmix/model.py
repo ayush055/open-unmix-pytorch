@@ -9,7 +9,7 @@ from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer, LayerNor
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 from .transformer import CustomTransformerDecoder, PositionalEncoding
-from reformer_pytorch import Reformer
+from reformer_pytorch import Reformer, Autopadder
 
 
 class OpenUnmix(nn.Module):
@@ -54,19 +54,23 @@ class OpenUnmix(nn.Module):
         
         self.encoder = Reformer(
             dim = self.nb_bins * nb_channels,
-            depth = 12,
-            heads = 8,
+            depth = 1,
+            heads = 1,
             lsh_dropout = 0.1,
             # causal = True,
         )
 
+        self.encoder = Autopadder(self.encoder)
+
         self.decoder = Reformer(
             dim = self.nb_bins * nb_channels,
-            depth = 12,
-            heads = 8,
+            depth = 1,
+            heads = 1,
             lsh_dropout = 0.1,
             causal = True,
         )
+
+        self.decoder = Autopadder(self.decoder)
 
         # self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
 
@@ -183,8 +187,8 @@ class OpenUnmix(nn.Module):
 
         # print("Y shape before fc layer:", y.size())
 
-        x = x.reshape(nb_frames, nb_samples, nb_channels * self.nb_bins)
-        y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
+        x = x.reshape(nb_samples, nb_frames, nb_channels * self.nb_bins)
+        y = y.reshape(y_samples, y_frames, y_channels * self.nb_bins)
 
         enc_keys = self.encoder(x)
         x = self.decoder(y, keys=enc_keys)
