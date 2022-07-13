@@ -9,6 +9,7 @@ from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 from .transformer import PositionalEncoding
+from openunmix import transformer
 
 class OpenUnmix(nn.Module):
     """OpenUnmix Core spectrogram based separation module.
@@ -56,7 +57,7 @@ class OpenUnmix(nn.Module):
 
         self.bn1 = BatchNorm1d(hidden_size)
 
-        # self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.5)
+        self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.5)
 
         if unidirectional:
             lstm_hidden_size = hidden_size
@@ -76,11 +77,11 @@ class OpenUnmix(nn.Module):
         # decoder_norm = LayerNorm(hidden_size, eps=1e-5)
         # self.decoder = TransformerDecoder(decoder_layer=custom_decoder_layer, num_layers=6, norm=decoder_norm)
         # self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.25)
-        self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
+        # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
         self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
         self.bn_decoder = BatchNorm1d(hidden_size)
         self.transformer = Transformer(
-            d_model=hidden_size + 2, # 2 for EOS and SOS tokens
+            d_model=hidden_size,
             nhead=4,
             num_encoder_layers=2,
             num_decoder_layers=2,
@@ -123,7 +124,7 @@ class OpenUnmix(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, x: Tensor, y: Tensor, tgt_mask=tgt_mask) -> Tensor:
+    def forward(self, x: Tensor, y: Tensor) -> Tensor:
         """
         Args:
             x: input spectrogram of shape
@@ -171,23 +172,26 @@ class OpenUnmix(nn.Module):
         x = torch.tanh(x)
 
         # Samples x Frames x Hidden Size
-        x = np.swapaxes(x, 0, 1)
+        # x = np.swapaxes(x, 0, 1)
 
-        SOS_TOKEN = torch.full((x.size(0), 1), 2, dtype=torch.float32)
-        EOS_TOKEN = torch.full((x.size(0), 1), 3, dtype=torch.float32)
+        SOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 2, dtype=torch.float32)
+        EOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 3, dtype=torch.float32)
         SOS_TOKEN = SOS_TOKEN.to(x.device)
         EOS_TOKEN = EOS_TOKEN.to(x.device)
 
-        x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=-1)
+        # print("SOS shape:", SOS_TOKEN.size())
+        # print("EOS shape:", EOS_TOKEN.size())
 
-        x = np.swapaxes(x, 0, 1)
+        x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=0)
 
         # Frames x Samples x Hidden Size
-        x = self.pos_encoder_2(x)
+        # x = np.swapaxes(x, 0, 1)
+
+        x = self.pos_encoder(x)
 
 
         # Samples * Frames x Hidden Size
-        x = x.reshape(nb_samples * nb_frames, self.hidden_size)
+        # x = x.reshape(nb_samples * nb_frames, self.hidden_size)
 
 
         # print("X shape after first fc layer:", x.size())
@@ -199,39 +203,45 @@ class OpenUnmix(nn.Module):
         # print("Y shape before fc layer:", y.size())
 
         # Frames x Samples x Frequency Domain
-        y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
-
-
-        # y = self.fc_decoder(y)
-        # y = self.bn_decoder(y)
+        y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
+        y = self.bn_decoder(y)
+        y = y.reshape(y_frames, y_samples, self.hidden_size)
+        # print("X shape:", x.size())
+        # print("Y shape", y.size())
+        y = torch.tanh(y)
 
         # y = y.reshape(y_frames, y_samples, 512)
         # y = y.reshape(y_frames * y_samples, 512)
 
-        
-        y = np.swapaxes(y, 0, 1)
+        # # Samples x Frames x Hidden Size
+        # y = np.swapaxes(y, 0, 1)
 
-        SOS_TOKEN = torch.full((y.size(0), 1), 2, dtype=torch.float32)
-        EOS_TOKEN = torch.full((y.size(0), 1), 3, dtype=torch.float32)
+        SOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 2, dtype=torch.float32)
+        EOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 3, dtype=torch.float32)
         SOS_TOKEN = SOS_TOKEN.to(y.device)
         EOS_TOKEN = EOS_TOKEN.to(y.device)
 
-        y = torch.cat((SOS_TOKEN, y, EOS_TOKEN), dim=-1)
+        y = torch.cat((SOS_TOKEN, y, EOS_TOKEN), dim=0)
 
-        y = np.swapaxes(y, 0, 1)
+        # Frames x Samples x Hidden Size
+        # y = np.swapaxes(y, 0, 1)
 
-        y = self.pos_encoder_2(y)
+        y = self.pos_encoder(y)
 
-        y = y.reshape(-1, y_channels * self.nb_bins)
+        # y = y.reshape(-1, y_channels * self.nb_bins)
 
-        y_input = y[:, :-1]
+        # y_input = y[:, :-1]
 
-        sequence_length = y_input.size(1)
-        print(y_input.size())
+        
+        y_input = y[:-1, :, :]
+        # print("Y shifted shape", y_input.size())
+
+        sequence_length = y_input.size(0)
         print(sequence_length)
-        tgt_mask = self.transformer.get_tgt_mask(sequence_length).to(self.device)
-        y_size = (y_frames, y_samples, y_input.size(-1))
-        x_size = (nb_frames, nb_samples, x.size(-1))
+        tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
+
+        # y_size = (y_frames, y_samples, y_input.size(-1))
+        # x_size = (nb_frames, nb_samples, x.size(-1))
         # y = torch.tanh(y)
         
         # print(f"Y shape before encoder: {y.size()} \n {y}\n")
@@ -248,11 +258,16 @@ class OpenUnmix(nn.Module):
 
         # print("Y shape transformed:", y.shape)
         # tgt = torch.zeros(nb_frames, nb_samples, self.hidden_size).cuda()
-        transformer_out = self.transformer(x, y_input, tgt_mask, src_size=x_size, tgt_size=y_size)
+        transformer_out = self.transformer(x, y_input, tgt_mask=tgt_mask)
         # print(transformer_out.size())
 
         # lstm skip connection
         # x = torch.cat([x, lstm_out[0]], -1)
+        # print("Transformer out:", transformer_out.size())
+        # print("X shape:", x.size())
+
+        x = x[1:-1, :, :]
+        transformer_out = transformer_out[1:, :, :]
         x = torch.cat([x, transformer_out], -1)
 
         # first dense stage + batch norm
