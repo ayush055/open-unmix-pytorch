@@ -52,7 +52,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
             X = encoder(x)
             Y = encoder(y)
             print("Memory used:", torch.cuda.memory_reserved(0))
-            Y_hat = unmix(X, Y)
+            Y_hat = unmix(X)
             loss = torch.nn.functional.mse_loss(Y_hat, Y)
             losses.update(loss.item(), Y.size(1))
         return losses.avg
