@@ -106,7 +106,8 @@ class OpenUnmix(nn.Module):
         self.resnet = models.resnet50(pretrained=True)
         self.resnet.fc = nn.Sequential(nn.Linear(self.resnet.fc.in_features, hidden_size))
 
-        # self.bn1 = BatchNorm1d(hidden_size)
+        # maybe comment this out idk
+        self.bn1 = BatchNorm1d(hidden_size)
 
         # self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.1)
 
