@@ -56,7 +56,7 @@ class OpenUnmix(nn.Module):
         # self.hidden_size = hidden_size
         
         self.encoder = Reformer(
-            dim = self.nb_output_bins * nb_channels,
+            dim = hidden_size,
             depth = 1,
             heads = 1,
             lsh_dropout = 0.1,
@@ -70,7 +70,7 @@ class OpenUnmix(nn.Module):
             depth = 1,
             heads = 1,
             lsh_dropout = 0.1,
-            # causal = True,
+            causal = True,
         )
 
         self.decoder = Autopadder(self.decoder)
@@ -173,11 +173,11 @@ class OpenUnmix(nn.Module):
         mix = x.detach().clone()
 
         # crop
-        x = x[..., : self.nb_output_bins]
+        x = x[..., : self.nb_bins]
         y = y[..., : self.nb_output_bins]
         # shift and scale input to mean=0 std=1 (across all bins)
-        x = x + self.output_mean
-        x = x * self.output_scale
+        x = x + self.input_mean
+        x = x * self.input_scale
 
         y = y + self.output_mean
         y = y * self.output_scale
@@ -186,12 +186,12 @@ class OpenUnmix(nn.Module):
         # and encode to (nb_frames*nb_samples, hidden_size)
 
         # print("X shape before first fc layer:", x.size())
-        # x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
+        x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
         # normalize every instance in a batch
-        # x = self.bn1(x)
-        # x = x.reshape(nb_frames, nb_samples, self.hidden_size)
+        x = self.bn1(x)
+        x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range ot [-1, 1]
-        # x = torch.tanh(x)
+        x = torch.tanh(x)
         # print("X shape after first fc layer:", x.size())
         # x = self.pos_encoder(x)
 
@@ -200,7 +200,7 @@ class OpenUnmix(nn.Module):
 
         # print("Y shape before fc layer:", y.size())
 
-        x = x.reshape(nb_samples, nb_frames, nb_channels * self.nb_output_bins)
+        x = x.reshape(nb_samples, nb_frames, self.hidden_size)
         y = y.reshape(y_samples, y_frames, y_channels * self.nb_output_bins)
 
         print("X shape", x.size())
