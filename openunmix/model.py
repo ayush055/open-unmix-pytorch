@@ -85,18 +85,19 @@ class OpenUnmix(nn.Module):
 
         """
 
+        """
         # self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
 
-        """
-        self.conv1 = torch.nn.Conv2d(2, 8, kernel_size = 7, stride = 2)
-        self.conv2 = torch.nn.Conv2d(8, 16, kernel_size = 5, stride = 2)
+        self.conv1 = torch.nn.Conv2d(2, 8, kernel_size = 7, stride = 1)
+        self.conv2 = torch.nn.Conv2d(8, 16, kernel_size = 5, stride = 1)
         self.pool1 = torch.nn.MaxPool2d(kernel_size = 3)
-        self.conv3 = torch.nn.Conv2d(16, 32, kernel_size = 5, stride = 2)
-        self.conv4 = torch.nn.Conv2d(32, 64, kernel_size = 3, stride = 2)
+        self.conv3 = torch.nn.Conv2d(16, 32, kernel_size = 5, stride = 1)
+        self.conv4 = torch.nn.Conv2d(32, 64, kernel_size = 3, stride = 1)
         self.pool2 = torch.nn.MaxPool2d(kernel_size=3)
 
         self.flatten = nn.Flatten()
 
+        # change the 576 if conv layer parameters are changed.
         self.fc1 = torch.nn.Linear(576, 512)
         # self.fc2 = torch.nn.Linear(576, 512)
         """
@@ -205,7 +206,7 @@ class OpenUnmix(nn.Module):
         # x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
         
         # apply CNN
-
+        """
         x = x.permute(1, 2, 3, 0)
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
@@ -217,6 +218,13 @@ class OpenUnmix(nn.Module):
         x = F.relu(self.fc1(x))
         # size changes from (1, 64) to (1, 10)
         # x = self.fc2(x)
+        """
+        
+        # apply resnet cnn lstm
+        for t in range(x.size(1)):
+            with torch.no_grad():
+                x = self.resnet(x[:, t, :, :, :]
+            lstm_out = self.lstm(x.unsqueeze(0))
 
         # print("X shape before first fc layer:", x.size())
         # x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
