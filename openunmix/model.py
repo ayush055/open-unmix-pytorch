@@ -148,7 +148,11 @@ class OpenUnmix(nn.Module):
         x = x + self.input_mean
         x = x * self.input_scale
 
-        print(x.min(), x.max())
+        # Apply input masking to help reduce overfitting
+        x_mask = torch.randn((nb_frames, nb_samples, nb_channels, self.nb_bins), device=torch.device("cuda")).uniform_() > 0.15
+        x = x * x_mask
+        
+        # print(x_mask.sum())
 
         # to (nb_frames*nb_samples, nb_channels*nb_bins)
         # and encode to (nb_frames*nb_samples, hidden_size)
