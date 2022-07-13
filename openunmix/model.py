@@ -1,3 +1,4 @@
+from pydoc import ModuleScanner
 from typing import Optional, Mapping
 
 import numpy as np
@@ -9,6 +10,10 @@ from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer, LayerNor
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 from torch.autograd import Variable
+from torchvision.models as models
+from torch.nn.utils.rnn import pack_padded_sequence
+from torchvision.models import resnet18, resnet50
+
 # from .transformer import CustomTransformerDecoder, PositionalEncoding
 
 class OpenUnmix(nn.Module):
@@ -82,6 +87,7 @@ class OpenUnmix(nn.Module):
 
         # self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
 
+        """
         self.conv1 = torch.nn.Conv2d(2, 8, kernel_size = 7, stride = 2)
         self.conv2 = torch.nn.Conv2d(8, 16, kernel_size = 5, stride = 2)
         self.pool1 = torch.nn.MaxPool2d(kernel_size = 3)
@@ -93,8 +99,12 @@ class OpenUnmix(nn.Module):
 
         self.fc1 = torch.nn.Linear(576, 512)
         # self.fc2 = torch.nn.Linear(576, 512)
+        """
 
-        self.bn1 = BatchNorm1d(hidden_size)
+        self.resnet = resnet50(pretrained=True)
+        self.resnet.fc = nn.Sequential(nn.Linear(self.resnet.fc.in_features, hidden_size))
+
+        # self.bn1 = BatchNorm1d(hidden_size)
 
         # self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.1)
 
