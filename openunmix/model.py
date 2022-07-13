@@ -8,6 +8,7 @@ from torch import Tensor
 from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
+from .transformer import PositionalEncoding
 
 class OpenUnmix(nn.Module):
     """OpenUnmix Core spectrogram based separation module.
@@ -169,6 +170,7 @@ class OpenUnmix(nn.Module):
         # squash range to [-1, 1]
         x = torch.tanh(x)
 
+        # Samples x Frames x Hidden Size
         x = np.swapaxes(x, 0, 1)
 
         SOS_TOKEN = torch.full((x.size(0), 1), 2, dtype=torch.float32)
@@ -180,8 +182,11 @@ class OpenUnmix(nn.Module):
 
         x = np.swapaxes(x, 0, 1)
 
+        # Frames x Samples x Hidden Size
         x = self.pos_encoder_2(x)
 
+
+        # Samples * Frames x Hidden Size
         x = x.reshape(nb_samples * nb_frames, self.hidden_size)
 
 
@@ -193,6 +198,7 @@ class OpenUnmix(nn.Module):
 
         # print("Y shape before fc layer:", y.size())
 
+        # Frames x Samples x Frequency Domain
         y = y.reshape(y_frames, y_samples, y_channels * self.nb_bins)
 
 
@@ -202,6 +208,7 @@ class OpenUnmix(nn.Module):
         # y = y.reshape(y_frames, y_samples, 512)
         # y = y.reshape(y_frames * y_samples, 512)
 
+        
         y = np.swapaxes(y, 0, 1)
 
         SOS_TOKEN = torch.full((y.size(0), 1), 2, dtype=torch.float32)
