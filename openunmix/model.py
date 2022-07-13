@@ -214,6 +214,7 @@ class OpenUnmix(nn.Module):
         
         enc_keys = self.encoder(x)
         x = self.decoder(y, keys=enc_keys)
+        print(x.size())
         # print(f"Y shape before encoder: {y.size()} \n {y}\n")
         # y = self.pos_encoder_1(y)
         # print(f"Y shape after encoder: {y.size()} \n {y}")
