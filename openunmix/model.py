@@ -10,7 +10,7 @@ from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer, LayerNor
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 from torch.autograd import Variable
-from torchvision.models as models
+from torchvision.models import models
 from torch.nn.utils.rnn import pack_padded_sequence
 from torchvision.models import resnet18, resnet50
 
