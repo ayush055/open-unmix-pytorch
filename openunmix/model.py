@@ -56,7 +56,7 @@ class OpenUnmix(nn.Module):
         # self.hidden_size = hidden_size
         
         self.encoder = Reformer(
-            dim = self.nb_bins * nb_channels,
+            dim = self.nb_output_bins * nb_channels,
             depth = 1,
             heads = 1,
             lsh_dropout = 0.1,
