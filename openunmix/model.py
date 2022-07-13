@@ -66,7 +66,7 @@ class OpenUnmix(nn.Module):
         self.encoder = Autopadder(self.encoder)
 
         self.decoder = Reformer(
-            dim = self.nb_bins * nb_channels,
+            dim = self.nb_output_bins * nb_channels,
             depth = 1,
             heads = 1,
             lsh_dropout = 0.1,
