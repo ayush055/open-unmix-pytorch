@@ -94,12 +94,11 @@ class OpenUnmix(nn.Module):
         self.conv4 = torch.nn.Conv2d(32, 64, kernel_size = 3, stride = 1)
         self.pool2 = torch.nn.MaxPool2d(kernel_size=3)
 
-        self.flatten = nn.Flatten()
-
         # change the 576 if conv layer parameters are changed.
         self.fc1 = torch.nn.Linear(576, 512)
         # self.fc2 = torch.nn.Linear(576, 512)
         """
+        self.flatten = nn.Flatten()
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -274,6 +273,7 @@ class OpenUnmix(nn.Module):
         # x = torch.cat([x, transformer_out], -1)
 
         # first dense stage + batch norm
+        x = self.flatten()
         x = self.fc3(x.reshape(-1, x.shape[-1]))
         x = self.bn2(x)
 
