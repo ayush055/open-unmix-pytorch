@@ -282,8 +282,7 @@ def main():
             max_bin=max_bin,
         ).to(device)
 
-    # optimizer = torch.optim.Adam(unmix.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    optimizer = torch.optim.AdamW(unmix.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = torch.optim.Adam(unmix.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
