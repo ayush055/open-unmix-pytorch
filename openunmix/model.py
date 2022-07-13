@@ -83,7 +83,7 @@ class OpenUnmix(nn.Module):
         # self.transformer = Transformer(d_model=hidden_size, nhead=4, num_encoder_layers=3, num_decoder_layers=3, dropout=0.5)
 
         self.encoder_layer = TransformerEncoderLayer(d_model=512, nhead=4, dropout=0.5, activation="gelu")
-        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=2)
+        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=3)
 
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
@@ -158,7 +158,7 @@ class OpenUnmix(nn.Module):
         x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range ot [-1, 1]
         x = torch.tanh(x)
-        x = self.dropout1(x)
+        # x = self.dropout1(x)
         # print("X shape after first fc layer:", x.size())
         x = self.pos_encoder(x)
 
@@ -194,7 +194,7 @@ class OpenUnmix(nn.Module):
         x = self.bn2(x)
 
         x = F.relu(x)
-        x = self.dropout2(x)
+        # x = self.dropout2(x)
 
         # second dense stage + layer norm
         x = self.fc3(x)
