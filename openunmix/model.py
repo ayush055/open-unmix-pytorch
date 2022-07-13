@@ -10,9 +10,8 @@ from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer, LayerNor
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 from torch.autograd import Variable
-from torchvision.models import models
+from torchvision import models
 from torch.nn.utils.rnn import pack_padded_sequence
-from torchvision.models import resnet18, resnet50
 
 # from .transformer import CustomTransformerDecoder, PositionalEncoding
 
@@ -102,7 +101,7 @@ class OpenUnmix(nn.Module):
         # self.fc2 = torch.nn.Linear(576, 512)
         """
 
-        self.resnet = resnet50(pretrained=True)
+        self.resnet = models.resnet50(pretrained=True)
         self.resnet.fc = nn.Sequential(nn.Linear(self.resnet.fc.in_features, hidden_size))
 
         # self.bn1 = BatchNorm1d(hidden_size)
