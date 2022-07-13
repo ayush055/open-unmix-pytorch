@@ -225,7 +225,7 @@ class OpenUnmix(nn.Module):
         # x = self.bn3(x)
 
         # reshape back to original dim
-        # x = x.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
+        x = x.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
 
         # apply output scaling
         x *= self.output_scale
