@@ -223,7 +223,7 @@ class OpenUnmix(nn.Module):
         x = x.permute(1, 2, 3, 0)
 
         # add 3rd channel
-        x = torch.cat(x, torch.zeros(x.size(0), 1, x.size(2), x.size(3)))
+        x = torch.cat((x, torch.zeros(x.size(0), 1, x.size(2), x.size(3))), 1)
         # x = x.expand(x.size(0), 3, x.size(2), x.size(3))
         print(x.size())
         x = self.resnet(x)
