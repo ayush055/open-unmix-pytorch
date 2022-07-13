@@ -201,7 +201,7 @@ class OpenUnmix(nn.Module):
         # print("Y shape before fc layer:", y.size())
 
         x = x.reshape(nb_samples, nb_frames, nb_channels * self.nb_bins)
-        y = y.reshape(y_samples, y_frames, y_channels * self.nb_bins)
+        y = y.reshape(y_samples, y_frames, y_channels * self.nb_output_bins)
 
         enc_keys = self.encoder(x)
         x = self.decoder(y, keys=enc_keys)
