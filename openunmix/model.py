@@ -271,7 +271,7 @@ class OpenUnmix(nn.Module):
 
         # lstm skip connection
         # x = torch.cat([x, lstm_out[0]], -1)
-        x = torch.cat([x, transformer_out], -1)
+        # x = torch.cat([x, transformer_out], -1)
 
         # first dense stage + batch norm
         x = self.fc3(x.reshape(-1, x.shape[-1]))
