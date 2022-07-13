@@ -274,6 +274,7 @@ class OpenUnmix(nn.Module):
 
         # first dense stage + batch norm
         x = self.flatten(x)
+        print('shape of x after flatten: ', x.shape)
         x = self.fc3(x.reshape(-1, x.shape[-1]))
         x = self.bn2(x)
 
