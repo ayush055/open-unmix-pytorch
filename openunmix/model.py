@@ -223,7 +223,7 @@ class OpenUnmix(nn.Module):
         # apply resnet cnn lstm
         for t in range(x.size(1)):
             with torch.no_grad():
-                x = self.resnet(x[:, t, :, :, :]
+                x = self.resnet(x[:, t, :, :, :])
             lstm_out = self.lstm(x.unsqueeze(0))
 
         # print("X shape before first fc layer:", x.size())
