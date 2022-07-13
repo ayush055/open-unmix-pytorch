@@ -203,9 +203,10 @@ class OpenUnmix(nn.Module):
         x = x.reshape(nb_samples, nb_frames, nb_channels * self.nb_output_bins)
         y = y.reshape(y_samples, y_frames, y_channels * self.nb_output_bins)
 
+        print("X shape", x.size())
+        print("Y shape", y.size())
         enc_keys = self.encoder(x)
         x = self.decoder(y, keys=enc_keys)
-        print(x.size())
         # print(f"Y shape before encoder: {y.size()} \n {y}\n")
         # y = self.pos_encoder_1(y)
         # print(f"Y shape after encoder: {y.size()} \n {y}")
