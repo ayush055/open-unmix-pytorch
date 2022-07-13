@@ -173,11 +173,11 @@ class OpenUnmix(nn.Module):
         mix = x.detach().clone()
 
         # crop
-        x = x[..., : self.nb_bins]
+        x = x[..., : self.nb_output_bins]
         y = y[..., : self.nb_output_bins]
         # shift and scale input to mean=0 std=1 (across all bins)
-        x = x + self.input_mean
-        x = x * self.input_scale
+        x = x + self.output_mean
+        x = x * self.output_scale
 
         y = y + self.output_mean
         y = y * self.output_scale
@@ -200,7 +200,7 @@ class OpenUnmix(nn.Module):
 
         # print("Y shape before fc layer:", y.size())
 
-        x = x.reshape(nb_samples, nb_frames, nb_channels * self.nb_bins)
+        x = x.reshape(nb_samples, nb_frames, nb_channels * self.nb_output_bins)
         y = y.reshape(y_samples, y_frames, y_channels * self.nb_output_bins)
 
         enc_keys = self.encoder(x)
