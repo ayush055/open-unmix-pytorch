@@ -70,7 +70,7 @@ class OpenUnmix(nn.Module):
             depth = 1,
             heads = 1,
             lsh_dropout = 0.1,
-            causal = True,
+            # causal = True,
         )
 
         self.decoder = Autopadder(self.decoder)
