@@ -82,8 +82,8 @@ class OpenUnmix(nn.Module):
         self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
         # self.transformer = Transformer(d_model=hidden_size, nhead=4, num_encoder_layers=3, num_decoder_layers=3, dropout=0.5)
 
-        self.encoder_layer = TransformerEncoderLayer(d_model=512, nhead=4, dropout=0.5, activation="gelu")
-        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=3)
+        self.encoder_layer = TransformerEncoderLayer(d_model=512, nhead=8, dropout=0.5, activation="gelu")
+        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=2)
 
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
