@@ -220,7 +220,7 @@ class OpenUnmix(nn.Module):
         """
         
         # apply resnet cnn lstm
-        x = x.permute(1, 0, 2, 3)
+        x = x.permute(1, 2, 3, 0)
         x = self.resnet(x)
         lstm_out = self.lstm(x.unsqueeze(0))
 
