@@ -101,6 +101,8 @@ class OpenUnmix(nn.Module):
         # self.fc2 = torch.nn.Linear(576, 512)
         """
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         self.resnet = models.resnet50(pretrained=True)
         self.resnet.fc = nn.Sequential(nn.Linear(self.resnet.fc.in_features, hidden_size))
 
@@ -223,7 +225,8 @@ class OpenUnmix(nn.Module):
         x = x.permute(1, 2, 3, 0)
 
         # add 3rd channel
-        x = torch.cat((x, torch.zeros(x.size(0), 1, x.size(2), x.size(3))), 1)
+        padding = torch.zeros(x.size(0), 1, x.size(2), x.size(3)).to(self.device)
+        x = torch.cat((x, padding), 1)
         # x = x.expand(x.size(0), 3, x.size(2), x.size(3))
         print(x.size())
         x = self.resnet(x)
