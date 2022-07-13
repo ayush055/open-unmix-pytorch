@@ -75,9 +75,9 @@ class OpenUnmix(nn.Module):
 
         self.decoder = Autopadder(self.decoder)
 
-        # self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
+        self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
 
-        # self.bn1 = BatchNorm1d(hidden_size)
+        self.bn1 = BatchNorm1d(hidden_size)
 
         # self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.1)
 
