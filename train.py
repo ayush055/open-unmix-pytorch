@@ -63,7 +63,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
     y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
     with torch.no_grad():
         for x, y in valid_sampler:
-            x = x.to(device)
+            x, y = x.to(device), y.to(device)
             X = encoder(x)
             Y = encoder(y)
             for _ in range(x.size(-1)):
