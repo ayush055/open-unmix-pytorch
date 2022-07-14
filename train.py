@@ -72,6 +72,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 pred = unmix.feed_transformer(X, y_input, tgt_mask)
                 print("Pred shape", pred.size())
                 next_item = pred.topk(1)[1].view(-1)[-1].item() # num with highest probability
+                print("Next item", next_item)
                 next_item = torch.tensor([[next_item]], device=device)
                 print("Next Item shape:", next_item.size())
 
