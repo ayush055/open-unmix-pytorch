@@ -40,7 +40,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
     return losses.avg
 
 
-def valid2(args, unmix, encoder, device, valid_sampler):
+def valid(args, unmix, encoder, device, valid_sampler):
     losses = utils.AverageMeter()
     unmix.eval()
     with torch.no_grad():
@@ -56,7 +56,7 @@ def valid2(args, unmix, encoder, device, valid_sampler):
             losses.update(loss.item(), Y.size(1))
         return losses.avg
 
-def valid(args, unmix, encoder, device, valid_sampler):
+def predict(args, unmix, encoder, device, valid_sampler):
     losses = utils.AverageMeter()
     unmix.eval()
 
