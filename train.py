@@ -31,7 +31,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         X = encoder(x)
         Y = encoder(y)
         Y_hat = unmix(X, Y)
-        print("Predicted Shape Y_hat:", Y_hat.size())
+        # print("Predicted Shape Y_hat:", Y_hat.size())
         loss = torch.nn.functional.mse_loss(Y_hat, Y)
         loss.backward()
         optimizer.step()
