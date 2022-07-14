@@ -450,6 +450,7 @@ class OpenUnmix(nn.Module):
         # print("Y shape:", y.size())
         # print("Tgt mask shape:", tgt_mask.size())
         transformer_out = self.transformer(x, y, tgt_mask=tgt_mask)
+        print("Transformer out:", transformer_out.size())
         return transformer_out
 
     def get_tgt_mask(self, size) -> torch.tensor:
