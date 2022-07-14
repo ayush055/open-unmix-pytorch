@@ -174,7 +174,7 @@ class OpenUnmix(nn.Module):
 
         # crop
         x = x[..., : self.nb_bins]
-        y = y[..., : self.nb_output_bins]
+        y = y[..., : self.nb_bins]
         # shift and scale input to mean=0 std=1 (across all bins)
         x = x + self.input_mean
         x = x * self.input_scale
