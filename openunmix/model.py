@@ -238,7 +238,7 @@ class OpenUnmix(nn.Module):
         # x = F.relu(x)
 
         # second dense stage + layer norm
-        x = self.fc3(x.reshape(-1, self.hidden_size))
+        x = self.fc3(x.reshape(-1, 255))
         x = self.fc3(x)
         x = self.bn3(x)
 
