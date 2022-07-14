@@ -124,7 +124,7 @@ class OpenUnmix(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, x: Tensor, y: Tensor, predict=False) -> Tensor:
+    def forward(self, x: Tensor, y: Tensor) -> Tensor:
         """
         Args:
             x: input spectrogram of shape
@@ -202,41 +202,40 @@ class OpenUnmix(nn.Module):
 
         # print("Y shape before fc layer:", y.size())
 
-        if not predict:
-            # Frames x Samples x Frequency Domain
-            y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
-            y = self.bn_decoder(y)
-            y = y.reshape(y_frames, y_samples, self.hidden_size)
-            # print("X shape:", x.size())
-            # print("Y shape", y.size())
-            y = torch.tanh(y)
+        # Frames x Samples x Frequency Domain
+        y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
+        y = self.bn_decoder(y)
+        y = y.reshape(y_frames, y_samples, self.hidden_size)
+        # print("X shape:", x.size())
+        # print("Y shape", y.size())
+        y = torch.tanh(y)
 
-            # y = y.reshape(y_frames, y_samples, 512)
-            # y = y.reshape(y_frames * y_samples, 512)
+        # y = y.reshape(y_frames, y_samples, 512)
+        # y = y.reshape(y_frames * y_samples, 512)
 
-            # # Samples x Frames x Hidden Size
-            # y = np.swapaxes(y, 0, 1)
+        # # Samples x Frames x Hidden Size
+        # y = np.swapaxes(y, 0, 1)
 
-            SOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 2, dtype=torch.float32)
-            EOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 3, dtype=torch.float32)
-            SOS_TOKEN = SOS_TOKEN.to(y.device)
-            EOS_TOKEN = EOS_TOKEN.to(y.device)
+        SOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 2, dtype=torch.float32)
+        EOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 3, dtype=torch.float32)
+        SOS_TOKEN = SOS_TOKEN.to(y.device)
+        EOS_TOKEN = EOS_TOKEN.to(y.device)
 
-            y = torch.cat((SOS_TOKEN, y, EOS_TOKEN), dim=0)
+        y = torch.cat((SOS_TOKEN, y, EOS_TOKEN), dim=0)
 
-            # Frames x Samples x Hidden Size
-            # y = np.swapaxes(y, 0, 1)
+        # Frames x Samples x Hidden Size
+        # y = np.swapaxes(y, 0, 1)
 
-            y = self.pos_encoder(y)
+        y = self.pos_encoder(y)
 
-            # y = y.reshape(-1, y_channels * self.nb_bins)
+        # y = y.reshape(-1, y_channels * self.nb_bins)
 
-            # y_input = y[:, :-1]
-            
-            y_input = y[:-1, :, :]
-            sequence_length = y_input.size(0)
+        # y_input = y[:, :-1]
+        
+        y_input = y[:-1, :, :]
+        sequence_length = y_input.size(0)
 
-            tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
+        tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
 
         # print("Y shifted shape", y_input.size())
 
