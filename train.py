@@ -73,7 +73,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 print("Pred shape", pred.size())
 
                 # Concatenate previous input with predicted best word
-                y_input = torch.cat((y_input, pred), dim=-1)
+                y_input = torch.cat((y_input, pred), dim=0)
             
             loss = torch.nn.functional.mse_loss(y_input, Y)
             losses.update(loss.item(), Y.size(1))
