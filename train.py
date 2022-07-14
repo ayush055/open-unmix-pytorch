@@ -328,7 +328,7 @@ def main():
         t.set_description("Training epoch")
         end = time.time()
 
-        valid_loss = valid(args, unmix, encoder, device, valid_sampler)
+        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
 
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
         valid_loss = valid(args, unmix, encoder, device, valid_sampler)
