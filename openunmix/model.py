@@ -38,7 +38,7 @@ class OpenUnmix(nn.Module):
         self,
         nb_bins: int = 4096,
         nb_channels: int = 2,
-        hidden_size: int = 512,
+        hidden_size: int = 512/4,
         nb_layers: int = 3,
         unidirectional: bool = False,
         input_mean: Optional[np.ndarray] = None,
@@ -234,6 +234,7 @@ class OpenUnmix(nn.Module):
         print(x.size())
         x = self.resnet(x)
         print('shape of x: ', x.shape)
+        x = self.flatten(x)
         lstm_out = self.lstm(x.unsqueeze(0))
 
         # print("X shape before first fc layer:", x.size())
