@@ -83,9 +83,9 @@ class OpenUnmix(nn.Module):
         self.transformer = Transformer(
             d_model=hidden_size,
             nhead=4,
-            num_encoder_layers=3,
-            num_decoder_layers=3,
-            dropout=0.3,
+            num_encoder_layers=4,
+            num_decoder_layers=4,
+            dropout=0.5,
             activation='gelu',
         )
         fc2_hiddensize = hidden_size * 2
