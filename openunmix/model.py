@@ -94,7 +94,7 @@ class OpenUnmix(nn.Module):
 
         self.fc3 = Linear(
             in_features=self.nb_bins * nb_channels,
-            out_features=self.nb_output_bins * nb_channels,
+            out_features=self.nb_output_bins,
             bias=False,
         )
 
