@@ -363,7 +363,7 @@ class OpenUnmix(nn.Module):
         x = x[1:-1, :, :]
         print("Transformer out:", transformer_out.size())
         print("X shape:", x.size())
-        print(transformer)
+        print(transformer_out)
         # transformer_out = transformer_out[1:, :, :]
         x = torch.cat([x, transformer_out], 0)
 
