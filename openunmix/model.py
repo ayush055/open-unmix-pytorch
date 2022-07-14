@@ -80,6 +80,8 @@ class OpenUnmix(nn.Module):
         # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
         self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
         self.bn_decoder = BatchNorm1d(hidden_size)
+        self.dropout_decoder = nn.Dropout(p=0.5)
+
         self.transformer = Transformer(
             d_model=hidden_size,
             nhead=4,
@@ -88,8 +90,10 @@ class OpenUnmix(nn.Module):
             dropout=0.5,
             activation='gelu',
         )
+
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
+        self.dropout2 = nn.Dropout(p=0.5)
 
         self.bn2 = BatchNorm1d(hidden_size)
 
@@ -167,9 +171,10 @@ class OpenUnmix(nn.Module):
         x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
         # normalize every instance in a batch
         x = self.bn1(x)
+        x = torch.tanh(x)
+        x = self.dropout1(x)
         x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range to [-1, 1]
-        x = torch.tanh(x)
 
         # Samples x Frames x Hidden Size
         # x = np.swapaxes(x, 0, 1)
@@ -205,10 +210,11 @@ class OpenUnmix(nn.Module):
         # Frames x Samples x Frequency Domain
         y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
         y = self.bn_decoder(y)
+        y = torch.tanh(y)
+        y = self.dropout_decoder(y)
         y = y.reshape(y_frames, y_samples, self.hidden_size)
         # print("X shape:", x.size())
         # print("Y shape", y.size())
-        y = torch.tanh(y)
 
         # y = y.reshape(y_frames, y_samples, 512)
         # y = y.reshape(y_frames * y_samples, 512)
@@ -272,6 +278,7 @@ class OpenUnmix(nn.Module):
         # first dense stage + batch norm
         x = self.fc2(x.reshape(-1, x.shape[-1]))
         x = self.bn2(x)
+        x = self.dropout2(x)
 
         x = F.relu(x)
 
