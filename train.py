@@ -66,7 +66,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
             x, y = x.to(device), y.to(device)
             X = encoder(x)
             Y = encoder(y)
-            for _ in range(x.size(-1)):
+            print("X shape:", X.size())
+            for _ in range(X.size(-1)):
                 tgt_mask = unmix.get_tgt_mask(y_input.size(0)).to(device)
                 pred = unmix.predict(X, y_input, tgt_mask)
                 print("Pred shape", pred.size())
