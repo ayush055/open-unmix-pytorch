@@ -56,7 +56,7 @@ class OpenUnmix(nn.Module):
         self.hidden_size = hidden_size
         
         self.encoder = Reformer(
-            dim = 255,
+            dim = self.nb_bins * nb_channels,
             depth = 1,
             heads = 1,
             lsh_dropout = 0.1,
@@ -66,7 +66,7 @@ class OpenUnmix(nn.Module):
         self.encoder = Autopadder(self.encoder)
 
         self.decoder = Reformer(
-            dim = 255, #self.nb_output_bins * nb_channels,
+            dim = self.nb_bins * nb_channels, #self.nb_output_bins * nb_channels,
             depth = 1,
             heads = 1,
             lsh_dropout = 0.1,
@@ -110,7 +110,7 @@ class OpenUnmix(nn.Module):
         # self.bn2 = BatchNorm1d(hidden_size)
 
         self.fc3 = Linear(
-            in_features=2974,
+            in_features=self.nb_bins * nb_channels,
             out_features=self.nb_output_bins * nb_channels,
             bias=False,
         )
@@ -200,13 +200,14 @@ class OpenUnmix(nn.Module):
 
         # print("Y shape before fc layer:", y.size())
 
-        x = x.reshape(nb_samples, nb_channels * self.nb_bins, nb_frames)
-        # y = y.reshape(y_samples, y_frames, y_channels * self.nb_output_bins)
+        # x = x.reshape(nb_samples, nb_channels * self.nb_bins, nb_frames)
+        x = x.reshape(nb_samples, nb_frames, nb_channels * self.nb_bins)
+        y = y.reshape(y_samples, y_frames, y_channels * self.nb_bins)
 
         # y = y.reshape(-1, y_channels * self.nb_output_bins)
         # y = self.fc_decoder(y)
         # y = self.bn_decoder(y)
-        y = y.reshape(y_samples, y_channels * self.nb_bins, y_frames)
+        # y = y.reshape(y_samples, y_channels * self.nb_bins, y_frames)
         # y = torch.tanh(y)
 
         print("X shape", x.size())
