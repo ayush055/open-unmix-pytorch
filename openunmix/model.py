@@ -54,9 +54,8 @@ class OpenUnmix(nn.Module):
         self.hidden_size = hidden_size
 
         self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
-
         self.bn1 = BatchNorm1d(hidden_size)
-
+        self.dropout1 = nn.Dropout(p=0.25)
         self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.5)
 
         if unidirectional:
@@ -80,20 +79,20 @@ class OpenUnmix(nn.Module):
         # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
         self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
         self.bn_decoder = BatchNorm1d(hidden_size)
-        self.dropout_decoder = nn.Dropout(p=0.5)
+        self.dropout_decoder = nn.Dropout(p=0.25)
 
         self.transformer = Transformer(
             d_model=hidden_size,
             nhead=4,
-            num_encoder_layers=2,
-            num_decoder_layers=2,
+            num_encoder_layers=3,
+            num_decoder_layers=3,
             dropout=0.5,
             activation='gelu',
         )
 
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
-        self.dropout2 = nn.Dropout(p=0.5)
+        self.dropout2 = nn.Dropout(p=0.25)
 
         self.bn2 = BatchNorm1d(hidden_size)
 
