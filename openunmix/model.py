@@ -94,11 +94,11 @@ class OpenUnmix(nn.Module):
 
         self.fc3 = Linear(
             in_features=self.nb_bins * nb_channels,
-            out_features=self.nb_output_bins,
+            out_features=self.nb_output_bins * nb_channels,
             bias=False,
         )
 
-        self.bn3 = BatchNorm1d(self.nb_output_bins)
+        self.bn3 = BatchNorm1d(self.nb_output_bins * nb_channels)
 
         if input_mean is not None:
             input_mean = torch.from_numpy(-input_mean[: self.nb_bins]).float()
@@ -275,6 +275,7 @@ class OpenUnmix(nn.Module):
         # x = F.relu(x)
 
         # second dense stage + layer norm
+        print("X shape:", x.size())
         x = self.fc3(x.reshape(-1, x.shape[-1]))
         x = self.bn3(x)
 
