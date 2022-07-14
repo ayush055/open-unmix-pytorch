@@ -270,13 +270,13 @@ class OpenUnmix(nn.Module):
         x = torch.cat([x, transformer_out], -1)
 
         # first dense stage + batch norm
-        x = self.fc2(x.reshape(-1, x.shape[-1]))
-        x = self.bn2(x)
+        # x = self.fc2(x.reshape(-1, x.shape[-1]))
+        # x = self.bn2(x)
 
-        x = F.relu(x)
+        # x = F.relu(x)
 
         # second dense stage + layer norm
-        x = self.fc3(x)
+        x = self.fc3(x.reshape(-1, x.shape[-1]))
         x = self.bn3(x)
 
         # reshape back to original dim
@@ -368,13 +368,13 @@ class OpenUnmix(nn.Module):
         print("X shape after concat:", x.size())
 
         # first dense stage + batch norm
-        x = self.fc2(x.reshape(-1, x.shape[-1]))
-        x = self.bn2(x)
+        # x = self.fc2(x.reshape(-1, x.shape[-1]))
+        # x = self.bn2(x)
 
-        x = F.relu(x)
+        # x = F.relu(x)
 
         # second dense stage + layer norm
-        x = self.fc3(x)
+        x = self.fc3(x.reshape(-1, x.shape[-1]))
         x = self.bn3(x)
 
         # reshape back to original dim
