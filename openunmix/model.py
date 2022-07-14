@@ -110,7 +110,7 @@ class OpenUnmix(nn.Module):
         # self.bn2 = BatchNorm1d(hidden_size)
 
         self.fc3 = Linear(
-            in_features=hidden_size,
+            in_features=255,
             out_features=self.nb_output_bins * nb_channels,
             bias=False,
         )
@@ -239,7 +239,6 @@ class OpenUnmix(nn.Module):
 
         # second dense stage + layer norm
         x = self.fc3(x.reshape(-1, 255))
-        x = self.fc3(x)
         x = self.bn3(x)
 
         # reshape back to original dim
