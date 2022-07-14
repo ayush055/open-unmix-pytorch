@@ -83,8 +83,8 @@ class OpenUnmix(nn.Module):
         self.transformer = Transformer(
             d_model=hidden_size,
             nhead=4,
-            num_encoder_layers=4,
-            num_decoder_layers=4,
+            num_encoder_layers=2,
+            num_decoder_layers=2,
             dropout=0.5,
             activation='gelu',
         )
