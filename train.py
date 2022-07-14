@@ -40,7 +40,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
     return losses.avg
 
 
-def valid(args, unmix, encoder, device, valid_sampler):
+def valid2(args, unmix, encoder, device, valid_sampler):
     losses = utils.AverageMeter()
     unmix.eval()
     with torch.no_grad():
@@ -55,6 +55,30 @@ def valid(args, unmix, encoder, device, valid_sampler):
             loss = torch.nn.functional.mse_loss(Y_hat, Y)
             losses.update(loss.item(), Y.size(1))
         return losses.avg
+
+def valid(args, unmix, encoder, device, valid_sampler):
+    losses = utils.AverageMeter()
+    unmix.eval()
+
+    y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
+    with torch.no_grad():
+        for x, y in valid_sampler:
+            x = x.to(device)
+            X = encoder(x)
+            Y = encoder(y)
+            for _ in range(x.size(-1)):
+                tgt_mask = unmix.get_tgt_mask(y_input.size(0)).to(device)
+                pred = unmix(x, y_input, tgt_mask, predict=True)
+                print("Pred shape", pred.size())
+                next_item = pred.topk(1)[1].view(-1)[-1].item() # num with highest probability
+                next_item = torch.tensor([[next_item]], device=device)
+                print("Next Item shape:", next_item.size())
+
+                # Concatenate previous input with predicted best word
+                y_input = torch.cat((y_input, next_item), dim=-1)
+            
+            loss = torch.nn.functional.mse_loss(y_input, Y)
+            losses.update(loss.item(), Y.size(1))
 
 
 def get_statistics(args, encoder, dataset):
