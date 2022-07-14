@@ -349,9 +349,9 @@ class OpenUnmix(nn.Module):
 
         x = self.pos_encoder(x)
 
-        print("X shape after encoder:", x.size())
-        print("Y shape:", y.size())
-        print("Tgt mask shape:", tgt_mask.size())
+        # print("X shape after encoder:", x.size())
+        # print("Y shape:", y.size())
+        # print("Tgt mask shape:", tgt_mask.size())
         transformer_out = self.transformer(x, y, tgt_mask=tgt_mask)
         # print(transformer_out.size())
 
@@ -361,8 +361,8 @@ class OpenUnmix(nn.Module):
         # print("X shape:", x.size())
 
         x = x[1:-1, :, :]
-        print("Transformer out:", transformer_out.size())
-        print("X shape:", x.size())
+        # print("Transformer out:", transformer_out.size())
+        # print("X shape:", x.size())
         # transformer_out = transformer_out[1:, :, :]
         x = torch.cat([x, transformer_out], -1)
 
@@ -446,12 +446,12 @@ class OpenUnmix(nn.Module):
 
         x = self.pos_encoder(x)
 
-        print("X shape after encoder:", x.size())
-        print("Y shape:", y.size())
-        print("Tgt mask shape:", tgt_mask.size())
+        # print("X shape after encoder:", x.size())
+        # print("Y shape:", y.size())
+        # print("Tgt mask shape:", tgt_mask.size())
         transformer_out = self.transformer(x, y, tgt_mask=tgt_mask)
         return transformer_out
-        
+
     def get_tgt_mask(self, size) -> torch.tensor:
         # Generates a squeare matrix where the each row allows one word more to be seen
         mask = torch.tril(torch.ones(size, size) == 1) # Lower triangular matrix
