@@ -53,16 +53,16 @@ class OpenUnmix(nn.Module):
 
         self.hidden_size = hidden_size
 
-        self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
+        # self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
 
-        self.bn1 = BatchNorm1d(hidden_size)
+        # self.bn1 = BatchNorm1d(hidden_size)
 
-        self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.5)
+        self.pos_encoder = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.5)
 
-        if unidirectional:
-            lstm_hidden_size = hidden_size
-        else:
-            lstm_hidden_size = hidden_size // 2
+        # if unidirectional:
+        #     lstm_hidden_size = hidden_size
+        # else:
+        #     lstm_hidden_size = hidden_size // 2
 
         # self.lstm = LSTM(
         #     input_size=hidden_size,
@@ -78,22 +78,22 @@ class OpenUnmix(nn.Module):
         # self.decoder = TransformerDecoder(decoder_layer=custom_decoder_layer, num_layers=6, norm=decoder_norm)
         # self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.25)
         # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
-        self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
-        self.bn_decoder = BatchNorm1d(hidden_size)
+        # self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
+        # self.bn_decoder = BatchNorm1d(hidden_size)
         self.transformer = Transformer(
-            d_model=hidden_size,
-            nhead=4,
+            d_model=self.nb_bins * nb_channels,
+            nhead=2,
             num_encoder_layers=4,
             num_decoder_layers=4,
             dropout=0.5,
             activation='gelu',
         )
-        fc2_hiddensize = hidden_size * 2
-        self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
-        self.bn2 = BatchNorm1d(hidden_size)
+        # fc2_hiddensize = hidden_size * 2
+        # self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
+        # self.bn2 = BatchNorm1d(hidden_size)
 
         self.fc3 = Linear(
-            in_features=hidden_size,
+            in_features=self.nb_bins * nb_channels,
             out_features=self.nb_output_bins * nb_channels,
             bias=False,
         )
@@ -163,12 +163,12 @@ class OpenUnmix(nn.Module):
         # and encode to (nb_frames*nb_samples, hidden_size)
 
         # print("X shape before first fc layer:", x.size())
-        x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
+        # x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
         # normalize every instance in a batch
-        x = self.bn1(x)
-        x = x.reshape(nb_frames, nb_samples, self.hidden_size)
+        # x = self.bn1(x)
+        x = x.reshape(nb_frames, nb_samples, self.nb_bins * nb_channels)
         # squash range to [-1, 1]
-        x = torch.tanh(x)
+        # x = torch.tanh(x)
 
         # Samples x Frames x Hidden Size
         # x = np.swapaxes(x, 0, 1)
@@ -202,12 +202,12 @@ class OpenUnmix(nn.Module):
         # print("Y shape before fc layer:", y.size())
 
         # Frames x Samples x Frequency Domain
-        y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
-        y = self.bn_decoder(y)
-        y = y.reshape(y_frames, y_samples, self.hidden_size)
+        # y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
+        # y = self.bn_decoder(y)
+        y = y.reshape(y_frames, y_samples, self.nb_bins * y_channels)
         # print("X shape:", x.size())
         # print("Y shape", y.size())
-        y = torch.tanh(y)
+        # y = torch.tanh(y)
 
         # y = y.reshape(y_frames, y_samples, 512)
         # y = y.reshape(y_frames * y_samples, 512)
@@ -269,10 +269,10 @@ class OpenUnmix(nn.Module):
         x = torch.cat([x, transformer_out], -1)
 
         # first dense stage + batch norm
-        x = self.fc2(x.reshape(-1, x.shape[-1]))
-        x = self.bn2(x)
+        # x = self.fc2(x.reshape(-1, x.shape[-1]))
+        # x = self.bn2(x)
 
-        x = F.relu(x)
+        # x = F.relu(x)
 
         # second dense stage + layer norm
         x = self.fc3(x)
