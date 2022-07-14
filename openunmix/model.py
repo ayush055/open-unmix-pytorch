@@ -82,9 +82,9 @@ class OpenUnmix(nn.Module):
         # self.bn_decoder = BatchNorm1d(hidden_size)
         self.transformer = Transformer(
             d_model=self.nb_bins * nb_channels,
-            nhead=2,
-            num_encoder_layers=4,
-            num_decoder_layers=4,
+            nhead=4,
+            num_encoder_layers=3,
+            num_decoder_layers=3,
             dropout=0.5,
             activation='gelu',
         )
