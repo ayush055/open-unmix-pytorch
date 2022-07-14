@@ -364,7 +364,7 @@ class OpenUnmix(nn.Module):
         print("Transformer out:", transformer_out.size())
         print("X shape:", x.size())
         # transformer_out = transformer_out[1:, :, :]
-        x = torch.cat([x, transformer_out], -1)
+        x = torch.cat([x, transformer_out], 0)
 
         # first dense stage + batch norm
         x = self.fc2(x.reshape(-1, x.shape[-1]))
