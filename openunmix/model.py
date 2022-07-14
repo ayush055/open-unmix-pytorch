@@ -349,6 +349,9 @@ class OpenUnmix(nn.Module):
 
         x = self.pos_encoder(x)
 
+        print("X shape after encoder:", x.size())
+        print("Y shape:", y.size())
+        print("Tgt mask shape:", tgt_mask.size())
         transformer_out = self.transformer(x, y, tgt_mask=tgt_mask)
         # print(transformer_out.size())
 
