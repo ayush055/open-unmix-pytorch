@@ -71,13 +71,9 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 tgt_mask = unmix.get_tgt_mask(y_input.size(0)).to(device)
                 pred = unmix.feed_transformer(X, y_input, tgt_mask)
                 print("Pred shape", pred.size())
-                print(pred)
-                print("Next item", next_item)
-                next_item = torch.tensor([[next_item]], device=device)
-                print("Next Item shape:", next_item.size())
 
                 # Concatenate previous input with predicted best word
-                y_input = torch.cat((y_input, next_item), dim=-1)
+                y_input = torch.cat((y_input, pred), dim=-1)
             
             loss = torch.nn.functional.mse_loss(y_input, Y)
             losses.update(loss.item(), Y.size(1))
