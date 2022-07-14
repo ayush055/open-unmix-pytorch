@@ -200,13 +200,13 @@ class OpenUnmix(nn.Module):
 
         # print("Y shape before fc layer:", y.size())
 
-        x = x.reshape(nb_samples, nb_frames, self.hidden_size)
+        x = x.reshape(nb_samples, nb_frames, nb_channels * self.nb_bins)
         # y = y.reshape(y_samples, y_frames, y_channels * self.nb_output_bins)
 
         # y = y.reshape(-1, y_channels * self.nb_output_bins)
         # y = self.fc_decoder(y)
         # y = self.bn_decoder(y)
-        y = y.reshape(y_samples, y_frames, self.hidden_size)
+        y = y.reshape(y_samples, y_frames, y_channels * self.nb_bins)
         # y = torch.tanh(y)
 
         print("X shape", x.size())
