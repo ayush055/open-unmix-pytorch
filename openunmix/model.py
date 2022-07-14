@@ -267,9 +267,11 @@ class OpenUnmix(nn.Module):
         x = x[1:-1, :, :]
         transformer_out = transformer_out[1:, :, :]
 
-        print("X shape:", x.size())
-        print("Transformer out:", transformer_out.size())
-        x = torch.cat([x, transformer_out], -1)
+        # print("X shape:", x.size())
+        # print("Transformer out:", transformer_out.size())
+        # x = torch.cat([x, transformer_out], -1)
+
+        x = transformer_out
 
         # first dense stage + batch norm
         # x = self.fc2(x.reshape(-1, x.shape[-1]))
@@ -278,7 +280,7 @@ class OpenUnmix(nn.Module):
         # x = F.relu(x)
 
         # second dense stage + layer norm
-        print("X shape:", x.size())
+        # print("X shape:", x.size())
         x = self.fc3(x.reshape(-1, x.shape[-1]))
         x = self.bn3(x)
 
