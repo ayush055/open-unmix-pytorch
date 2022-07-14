@@ -270,13 +270,13 @@ class OpenUnmix(nn.Module):
         x = torch.cat([x, transformer_out], -1)
 
         # first dense stage + batch norm
-        # x = self.fc2(x.reshape(-1, x.shape[-1]))
-        # x = self.bn2(x)
+        x = self.fc2(x.reshape(-1, x.shape[-1]))
+        x = self.bn2(x)
 
-        # x = F.relu(x)
+        x = F.relu(x)
 
         # second dense stage + layer norm
-        x = self.fc3(x.reshape(-1, x.shape[-1]))
+        x = self.fc3(x)
         x = self.bn3(x)
 
         # reshape back to original dim
@@ -364,17 +364,16 @@ class OpenUnmix(nn.Module):
         print("Transformer out:", transformer_out.size())
         print("X shape:", x.size())
         # transformer_out = transformer_out[1:, :, :]
-        x = torch.cat([x, transformer_out], 0)
-        print("X shape after concat:", x.size())
+        x = torch.cat([x, transformer_out], -1)
 
         # first dense stage + batch norm
-        # x = self.fc2(x.reshape(-1, x.shape[-1]))
-        # x = self.bn2(x)
+        x = self.fc2(x.reshape(-1, x.shape[-1]))
+        x = self.bn2(x)
 
-        # x = F.relu(x)
+        x = F.relu(x)
 
         # second dense stage + layer norm
-        x = self.fc3(x.reshape(-1, x.shape[-1]))
+        x = self.fc3(x)
         x = self.bn3(x)
 
         # reshape back to original dim
@@ -389,6 +388,70 @@ class OpenUnmix(nn.Module):
         # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
         return x.permute(1, 2, 3, 0)
 
+    def feed_transformer(self, x: Tensor, y: Tensor, tgt_mask: Tensor):
+        """
+        Args:
+            x: input spectrogram of shape
+                `(nb_samples, nb_channels, nb_bins, nb_frames)`
+
+        Returns:
+            Tensor: filtered spectrogram of shape
+                `(nb_samples, nb_channels, nb_bins, nb_frames)`
+        """
+
+        # permute so that batch is last for lstm
+        x = x.permute(3, 0, 1, 2)
+        # get current spectrogram shape
+
+        # samples (batch size), frames (duration of sequence, each frame is a time-bin of the STFT (~20ms for 5s duration, 255 frames), channels * bins is our frequency data
+
+        nb_frames, nb_samples, nb_channels, nb_bins = x.data.shape
+        # print("X shape:", nb_frames, nb_samples, nb_channels, nb_bins)
+        # print("Y shape:", y_frames, y_samples, y_channels, y_bins)
+
+        mix = x.detach().clone()
+
+        # crop
+        x = x[..., : self.nb_bins]
+        # shift and scale input to mean=0 std=1 (across all bins)
+        x = x + self.input_mean
+        x = x * self.input_scale
+
+        # to (nb_frames*nb_samples, nb_channels*nb_bins)
+        # and encode to (nb_frames*nb_samples, hidden_size)
+
+        # print("X shape before first fc layer:", x.size())
+        x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
+        # normalize every instance in a batch
+        x = self.bn1(x)
+        x = x.reshape(nb_frames, nb_samples, self.hidden_size)
+        # squash range to [-1, 1]
+        x = torch.tanh(x)
+
+        # Samples x Frames x Hidden Size
+        # x = np.swapaxes(x, 0, 1)
+
+        SOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 2, dtype=torch.float32)
+        EOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 3, dtype=torch.float32)
+        SOS_TOKEN = SOS_TOKEN.to(x.device)
+        EOS_TOKEN = EOS_TOKEN.to(x.device)
+
+        # print("SOS shape:", SOS_TOKEN.size())
+        # print("EOS shape:", EOS_TOKEN.size())
+
+        x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=0)
+
+        # Frames x Samples x Hidden Size
+        # x = np.swapaxes(x, 0, 1)
+
+        x = self.pos_encoder(x)
+
+        print("X shape after encoder:", x.size())
+        print("Y shape:", y.size())
+        print("Tgt mask shape:", tgt_mask.size())
+        transformer_out = self.transformer(x, y, tgt_mask=tgt_mask)
+        return transformer_out
+        
     def get_tgt_mask(self, size) -> torch.tensor:
         # Generates a squeare matrix where the each row allows one word more to be seen
         mask = torch.tril(torch.ones(size, size) == 1) # Lower triangular matrix
