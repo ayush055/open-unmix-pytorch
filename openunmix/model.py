@@ -75,9 +75,9 @@ class OpenUnmix(nn.Module):
 
         self.decoder = Autopadder(self.decoder)
 
-        self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
+        # self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
 
-        self.bn1 = BatchNorm1d(hidden_size)
+        # self.bn1 = BatchNorm1d(hidden_size)
 
         # self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.1)
 
@@ -99,8 +99,8 @@ class OpenUnmix(nn.Module):
         # decoder_norm = LayerNorm(hidden_size, eps=1e-5)
         # self.decoder = TransformerDecoder(decoder_layer=custom_decoder_layer, num_layers=6, norm=decoder_norm)
         # self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.1)
-        self.fc_decoder = Linear(self.nb_output_bins * nb_channels, hidden_size, bias=False)
-        self.bn_decoder = BatchNorm1d(hidden_size)
+        # self.fc_decoder = Linear(self.nb_output_bins * nb_channels, hidden_size, bias=False)
+        # self.bn_decoder = BatchNorm1d(hidden_size)
         # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.1)
         # self.transformer = Transformer(d_model=hidden_size)
 
@@ -186,12 +186,12 @@ class OpenUnmix(nn.Module):
         # and encode to (nb_frames*nb_samples, hidden_size)
 
         # print("X shape before first fc layer:", x.size())
-        x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
+        # x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
         # normalize every instance in a batch
-        x = self.bn1(x)
-        x = x.reshape(nb_frames, nb_samples, self.hidden_size)
+        # x = self.bn1(x)
+        # x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range ot [-1, 1]
-        x = torch.tanh(x)
+        # x = torch.tanh(x)
         # print("X shape after first fc layer:", x.size())
         # x = self.pos_encoder(x)
 
@@ -203,11 +203,11 @@ class OpenUnmix(nn.Module):
         x = x.reshape(nb_samples, nb_frames, self.hidden_size)
         # y = y.reshape(y_samples, y_frames, y_channels * self.nb_output_bins)
 
-        y = y.reshape(-1, y_channels * self.nb_output_bins)
-        y = self.fc_decoder(y)
-        y = self.bn_decoder(y)
+        # y = y.reshape(-1, y_channels * self.nb_output_bins)
+        # y = self.fc_decoder(y)
+        # y = self.bn_decoder(y)
         y = y.reshape(y_samples, y_frames, self.hidden_size)
-        y = torch.tanh(y)
+        # y = torch.tanh(y)
 
         print("X shape", x.size())
         print("Y shape", y.size())
