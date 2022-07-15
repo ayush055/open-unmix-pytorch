@@ -238,9 +238,9 @@ class OpenUnmix(nn.Module):
             y_input = y[:-1, :, :].unsqueeze(0)
         
         sequence_length = y_input.size(0)
-
         tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
 
+        print(sequence_length, y_input.size(), tgt_mask.size())
         # print("Y shifted shape", y_input.size())
 
         # y_size = (y_frames, y_samples, y_input.size(-1))
@@ -581,8 +581,6 @@ class Separator(nn.Module):
             y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
             for _ in range(X.size(0)):
                 # tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
-                print("Predict", predict)
-                print(y_input)
                 pred = target_module(X.detach().clone(), y_input, predict=predict)
                 pred = pred.unsqueeze(0)
                 y_input = torch.cat((y_input, pred), dim=0)
