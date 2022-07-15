@@ -662,7 +662,8 @@ class Separator(nn.Module):
         # in the case of residual, we added another source
         if self.residual:
             print(self.residual)
-            estimates_dict["residual"] = estimates[:, -1, ...]
+            # estimates_dict["residual"] = estimates[:, -1, ...]
+            estimates_dict["accompaniment"] = estimates[:, -1, ...]
 
         if aggregate_dict is not None:
             new_estimates = {}
