@@ -81,10 +81,10 @@ class OpenUnmix(nn.Module):
         #     encoder_layer2, num_layers=3
         # )
 
-        fc2_hiddensize = hidden_size * 2
+        fc2_hiddensize = 3512 #hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
 
-        self.bn2 = BatchNorm1d(hidden_size)
+        self.bn2 = BatchNorm1d(3512)
 
         self.fc3 = Linear(
             in_features=hidden_size,
