@@ -150,6 +150,7 @@ class OpenUnmix(nn.Module):
         # squash range ot [-1, 1]
         # x = torch.tanh(x)
 
+        x = x.reshape(nb_frames, nb_samples, self.nb_bins * nb_channels)
         x = self.pos_encoder1(x)
         x = self.encoder1(x)
 
