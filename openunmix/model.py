@@ -578,10 +578,10 @@ class Separator(nn.Module):
             # apply current model to get the source spectrogram
             y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
             for _ in range(X.size(0)):
-                tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
+                # tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
                 print("Predict", predict)
                 print(target_module)
-                pred = target_module(X.detach().clone(), y_input, tgt_mask, predict=predict)
+                pred = target_module(X.detach().clone(), y_input, predict=predict)
                 pred = pred.unsqueeze(0)
                 y_input = torch.cat((y_input, pred), dim=0)
             
