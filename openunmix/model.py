@@ -551,7 +551,6 @@ class Separator(nn.Module):
         self.eval()
 
     def forward(self, audio: Tensor, predict=False) -> Tensor:
-        print("predict", predict)
         """Performing the separation on audio input
 
         Args:
@@ -580,6 +579,8 @@ class Separator(nn.Module):
             y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
             for _ in range(X.size(0)):
                 tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
+                print("Predict", predict)
+                print(target_module)
                 pred = target_module(X.detach().clone(), y_input, tgt_mask, predict=predict)
                 pred = pred.unsqueeze(0)
                 y_input = torch.cat((y_input, pred), dim=0)
