@@ -588,7 +588,7 @@ class Separator(nn.Module):
                 pred = pred.unsqueeze(0)
                 y_input = torch.cat((y_input, pred), dim=0)
             
-            EOS_TOKEN = torch.full((1, y_input.size(1), y_input.size(2)), 3, dtype=torch.float32)
+            EOS_TOKEN = torch.full((1, y_input.size(1), y_input.size(2)), 3, dtype=torch.float32).to(device)
             y_input = torch.cat((y_input, EOS_TOKEN), dim=0)
             
             y_hat_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
