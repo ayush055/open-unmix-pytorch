@@ -46,7 +46,7 @@ def separate_and_evaluate(
 
     with torch.no_grad():
         audio = audio.to(device)
-        estimates = separator(audio, predict=True)
+        estimates = separator(audio)
 
     estimates = separator.to_dict(estimates, aggregate_dict=aggregate_dict)
 
