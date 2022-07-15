@@ -58,7 +58,7 @@ class OpenUnmix(nn.Module):
         self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.5)
         encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4, dropout=0.5, activation='gelu')
         self.encoder1 = TransformerEncoder(
-            encoder_layer1, num_layers=3
+            encoder_layer1, num_layers=2
         )
 
         if unidirectional:
@@ -81,7 +81,7 @@ class OpenUnmix(nn.Module):
         #     encoder_layer2, num_layers=3
         # )
 
-        fc2_hiddensize = hidden_size * 2
+        fc2_hiddensize = hidden_size * 3
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
 
         self.bn2 = BatchNorm1d(hidden_size)
@@ -150,14 +150,14 @@ class OpenUnmix(nn.Module):
         # squash range ot [-1, 1]
         x = torch.tanh(x)
 
-        # x = self.pos_encoder1(x)
-        # x = self.encoder1(x)
+        x_attn = self.pos_encoder1(x)
+        x_attn = self.encoder1(x)
 
         # apply 3-layers of stacked LSTM
         lstm_out = self.lstm(x)
 
         # lstm skip connection
-        x = torch.cat([x, lstm_out[0]], -1)
+        x = torch.cat([x, x_attn, lstm_out[0]], -1)
 
         # x = self.pos_encoder2(x)
         # x = self.encoder2(x)
@@ -169,7 +169,7 @@ class OpenUnmix(nn.Module):
         x = F.relu(x)
 
         # second dense stage + layer norm
-        x = self.fc3(x.reshape(-1, x.shape[-1]))
+        x = self.fc3(x)
         x = self.bn3(x)
 
         # reshape back to original dim
