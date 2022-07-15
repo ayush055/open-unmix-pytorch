@@ -55,11 +55,11 @@ class OpenUnmix(nn.Module):
 
         self.bn1 = BatchNorm1d(hidden_size)
 
-        # self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.5)
-        # encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4, dropout=0.5, activation='gelu')
-        # self.encoder1 = TransformerEncoder(
-        #     encoder_layer1, num_layers=3
-        # )
+        self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.5)
+        encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4, dropout=0.5, activation='gelu')
+        self.encoder1 = TransformerEncoder(
+            encoder_layer1, num_layers=3
+        )
 
         if unidirectional:
             lstm_hidden_size = hidden_size
@@ -143,15 +143,15 @@ class OpenUnmix(nn.Module):
 
         # to (nb_frames*nb_samples, nb_channels*nb_bins)
         # and encode to (nb_frames*nb_samples, hidden_size)
-        x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
+        # x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
         # normalize every instance in a batch
-        x = self.bn1(x)
-        x = x.reshape(nb_frames, nb_samples, self.hidden_size)
+        # x = self.bn1(x)
+        # x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range ot [-1, 1]
-        x = torch.tanh(x)
+        # x = torch.tanh(x)
 
-        # x = self.pos_encoder1(x)
-        # x = self.encoder1(x)
+        x = self.pos_encoder1(x)
+        x = self.encoder1(x)
 
         # apply 3-layers of stacked LSTM
         lstm_out = self.lstm(x)
