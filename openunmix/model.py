@@ -228,6 +228,7 @@ class OpenUnmix(nn.Module):
         # y = np.swapaxes(y, 0, 1)
 
         y = self.pos_encoder(y)
+        print(y, y.size())
 
         # y = y.reshape(-1, y_channels * self.nb_bins)
 
