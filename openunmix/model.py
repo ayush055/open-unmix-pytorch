@@ -169,7 +169,7 @@ class OpenUnmix(nn.Module):
         # x = F.relu(x)
 
         # second dense stage + layer norm
-        x = self.fc3(x)
+        x = self.fc3(x.reshape(-1, x.shape[-1]))
         x = self.bn3(x)
 
         # reshape back to original dim
