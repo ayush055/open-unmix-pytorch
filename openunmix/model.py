@@ -582,7 +582,7 @@ class Separator(nn.Module):
             for _ in range(X.size(0)):
                 # tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
                 print("Predict", predict)
-                print(y_inputs)
+                print(y_input)
                 pred = target_module(X.detach().clone(), y_input, predict=predict)
                 pred = pred.unsqueeze(0)
                 y_input = torch.cat((y_input, pred), dim=0)
