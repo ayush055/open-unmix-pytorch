@@ -238,6 +238,7 @@ class OpenUnmix(nn.Module):
         
         # normalize every instance in a batch
         x = self.bn1(x)
+        x = x.reshape(nb_frames, nb_samples, self.hidden_size)
 
         # squash range to [-1, 1]
         x = torch.tanh(x)
