@@ -273,6 +273,7 @@ class OpenUnmix(nn.Module):
         # print("Transformer out:", transformer_only.size())
         # print("X shape:", x.size())
 
+        print("Transformer only", transformer_only)
         if not transformer_only:
             x = x[1:-1, :, :]
             transformer_out = transformer_out[1:, :, :]
