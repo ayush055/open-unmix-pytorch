@@ -55,11 +55,11 @@ class OpenUnmix(nn.Module):
 
         self.bn1 = BatchNorm1d(hidden_size)
 
-        # self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.5)
-        # encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4, dropout=0.5, activation='gelu')
-        # self.encoder1 = TransformerEncoder(
-        #     encoder_layer1, num_layers=3
-        # )
+        self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.5)
+        encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4, dropout=0.5, activation='gelu')
+        self.encoder1 = TransformerEncoder(
+            encoder_layer1, num_layers=3
+        )
 
         if unidirectional:
             lstm_hidden_size = hidden_size
