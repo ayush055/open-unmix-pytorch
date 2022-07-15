@@ -9,6 +9,7 @@ import museval
 import torch
 from torch.multiprocessing import Pool, Process, set_start_method
 import tqdm
+import os
 
 import torchaudio
 
@@ -82,6 +83,7 @@ def separate_and_evaluate(
     device: Union[str, torch.device] = "cpu",
     wiener_win_len: Optional[int] = None,
     filterbank="torch",
+    decoder_dir=None,
 ) -> str:
 
     separator = utils.load_separator(
@@ -98,13 +100,13 @@ def separate_and_evaluate(
     separator.freeze()
     separator.to(device)
 
-    print(track)
-    print(track.path)
-
     audio, _ = load_audio(track.path)
     audio = torch.as_tensor(audio, dtype=torch.float32, device=device)
     # audio = torch.as_tensor(track.audio, dtype=torch.float32, device=device)
     audio = utils.preprocess(audio, track.rate, separator.sample_rate)
+
+    print(os.path.join(decoder_dir, track.name + ".wav"))
+    y_input, _ = load_audio(os.path.join(decoder_dir, track.name + ".wav"))
 
     estimates = separator(audio)
     estimates = separator.to_dict(estimates, aggregate_dict=aggregate_dict)
@@ -135,6 +137,13 @@ if __name__ == "__main__":
         default="umxl",
         type=str,
         help="path to mode base directory of pretrained models",
+    )
+
+    parser.add_argument(
+        "--decoder-dir",
+        required=True,
+        type=str,
+        help="path to directory where decoder inputs are stored",
     )
 
     parser.add_argument(
@@ -234,6 +243,7 @@ if __name__ == "__main__":
                     output_dir=args.outdir,
                     eval_dir=args.evaldir,
                     device=device,
+                    decoder_dir=args.decoder_dir,
                 ),
                 iterable=mus.tracks,
                 chunksize=1,
@@ -258,6 +268,7 @@ if __name__ == "__main__":
                 output_dir=args.outdir,
                 eval_dir=args.evaldir,
                 device=device,
+                decoder_dir=args.decoder_dir,
             )
             print(track, "\n", scores)
             results.add_track(scores)
