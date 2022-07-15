@@ -234,7 +234,8 @@ class OpenUnmix(nn.Module):
 
         # to (nb_frames*nb_samples, nb_channels*nb_bins)
         # and encode to (nb_frames*nb_samples, hidden_size)
-        x = x.reshape(nb_samples, nb_channels, nb_frames, self.nb_bins)
+        x = x.reshape(nb_samples, 1, nb_frames, self.nb_bins * nb_channels)
+        x = x.expand(nb_samples, 3, nb_frames, self.nb_bins * nb_channels)
         x = self.vgg16(x)
         # x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
         
