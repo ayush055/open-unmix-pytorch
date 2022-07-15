@@ -551,6 +551,7 @@ class Separator(nn.Module):
         self.eval()
 
     def forward(self, audio: Tensor, predict=False) -> Tensor:
+        print("predict")
         """Performing the separation on audio input
 
         Args:
