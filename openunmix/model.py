@@ -87,7 +87,7 @@ class OpenUnmix(nn.Module):
         self.bn2 = BatchNorm1d(hidden_size)
 
         self.fc3 = Linear(
-            in_features=hidden_size * 2,
+            in_features=hidden_size,
             out_features=self.nb_output_bins * nb_channels,
             bias=False,
         )
