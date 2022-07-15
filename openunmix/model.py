@@ -226,15 +226,16 @@ class OpenUnmix(nn.Module):
 
         # Frames x Samples x Hidden Size
         # y = np.swapaxes(y, 0, 1)
-        print(y, y.size())
         y = self.pos_encoder(y)
-        print(y, y.size())
 
         # y = y.reshape(-1, y_channels * self.nb_bins)
 
         # y_input = y[:, :-1]
 
-        y_input = y[:-1, :, :]
+        if not predict:
+            y_input = y[:-1, :, :]
+        else:
+            y_input = y[:-1, :, :].unsqueeze(0)
         
         sequence_length = y_input.size(0)
 
@@ -261,6 +262,7 @@ class OpenUnmix(nn.Module):
         # print("Y shape transformed:", y.shape)
         # tgt = torch.zeros(nb_frames, nb_samples, self.hidden_size).cuda()
         transformer_out = self.transformer(x, y_input, tgt_mask=tgt_mask)
+        print("Transformer out shape", transformer_out.size())
         # print(transformer_out.size())
 
         # lstm skip connection
@@ -268,12 +270,10 @@ class OpenUnmix(nn.Module):
         # print("Transformer out:", transformer_out.size())
         # print("X shape:", x.size())
 
-        x = x[1:-1, :, :]
-
-        print("Transformer out shape", transformer_out.size())
-        
-        transformer_out = transformer_out[1:, :, :]
-        if predict:
+        if not predict:
+            x = x[1:-1, :, :]
+            transformer_out = transformer_out[1:, :, :]
+        else:
             print("Transformer out shape", transformer_out.size())
             return transformer_out[-1, :, :]
         
