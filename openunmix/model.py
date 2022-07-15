@@ -123,7 +123,7 @@ class OpenUnmix(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, x: Tensor, y: Tensor, predict=False) -> Tensor:
+    def forward(self, x: Tensor, y: Tensor, transformer_only=False, predict=False) -> Tensor:
         """
         Args:
             x: input spectrogram of shape
@@ -203,7 +203,7 @@ class OpenUnmix(nn.Module):
         # print("Y shape before fc layer:", y.size())
 
         # Frames x Samples x Frequency Domain
-        if not predict:
+        if not predict and not transformer_only:
             y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
             y = self.bn_decoder(y)
             y = y.reshape(y_frames, y_samples, self.hidden_size)
@@ -232,7 +232,7 @@ class OpenUnmix(nn.Module):
 
         # y_input = y[:, :-1]
 
-        if not predict:
+        if not transformer_only:
             y_input = y[:-1, :, :]
         else:
             if y.size()[0] == 1:
@@ -270,10 +270,10 @@ class OpenUnmix(nn.Module):
 
         # lstm skip connection
         # x = torch.cat([x, lstm_out[0]], -1)
-        # print("Transformer out:", transformer_out.size())
+        # print("Transformer out:", transformer_only.size())
         # print("X shape:", x.size())
 
-        if not predict:
+        if not transformer_only:
             x = x[1:-1, :, :]
             transformer_out = transformer_out[1:, :, :]
         else:
@@ -555,7 +555,7 @@ class Separator(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, audio: Tensor, predict=False) -> Tensor:
+    def forward(self, audio: Tensor) -> Tensor:
         """Performing the separation on audio input
 
         Args:
@@ -584,15 +584,14 @@ class Separator(nn.Module):
             y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
             for _ in range(X.size(0)):
                 # tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
-                pred = target_module(X.detach().clone(), y_input, predict=predict).to(device)
+                pred = target_module(X.detach().clone(), y_input, transformer_only=True).to(device)
                 pred = pred.unsqueeze(0)
                 y_input = torch.cat((y_input, pred), dim=0)
             
             EOS_TOKEN = torch.full((1, y_input.size(1), y_input.size(2)), 3, dtype=torch.float32).to(device)
             y_input = torch.cat((y_input, EOS_TOKEN), dim=0)
             
-            y_hat_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
-            target_spectrogram = target_module(X.detach().clone(), y_input, y_hat_mask, predict=True)
+            target_spectrogram = target_module(X.detach().clone(), y_input, predict=True)
             spectrograms[..., j] = target_spectrogram
 
         # transposing it as
