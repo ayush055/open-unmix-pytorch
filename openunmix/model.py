@@ -242,7 +242,7 @@ class OpenUnmix(nn.Module):
         # apply 3-layers of stacked LSTM
         lstm_out = self.lstm(x)
 
-        print("Target:", tgt.size(), tgt)
+        # print("Target:", tgt.size(), tgt)
 
         # lstm skip connection
         x = torch.cat([x, lstm_out[0]], -1)
