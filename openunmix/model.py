@@ -152,7 +152,7 @@ class OpenUnmix(nn.Module):
         x = x + self.input_mean
         x = x * self.input_scale
 
-        if not predict:
+        if not predict and not transformer_only:
             y = y.permute(3, 0, 1, 2)
             y_frames, y_samples, y_channels, y_bins = y.data.shape
             y = y[..., : self.nb_bins]
