@@ -232,11 +232,8 @@ class OpenUnmix(nn.Module):
 
         # y_input = y[:, :-1]
 
-        if not predict:
-            y_input = y[:-1, :, :]
-        else:
-            y_input = y
-
+        y_input = y[:-1, :, :]
+        
         sequence_length = y_input.size(0)
 
         tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
@@ -270,6 +267,9 @@ class OpenUnmix(nn.Module):
         # print("X shape:", x.size())
 
         x = x[1:-1, :, :]
+
+        print("Transformer out shape", transformer_out.size())
+        
         transformer_out = transformer_out[1:, :, :]
         if predict:
             print("Transformer out shape", transformer_out.size())
@@ -550,7 +550,7 @@ class Separator(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, audio: Tensor) -> Tensor:
+    def forward(self, audio: Tensor, predict=False) -> Tensor:
         """Performing the separation on audio input
 
         Args:
@@ -572,10 +572,22 @@ class Separator(nn.Module):
 
         # initializing spectrograms variable
         spectrograms = torch.zeros(X.shape + (nb_sources,), dtype=audio.dtype, device=X.device)
+        device = X.device
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
             # apply current model to get the source spectrogram
-            target_spectrogram = target_module.predict(X.detach().clone())
+            y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
+            for _ in range(X.size(0)):
+                tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
+                pred = target_module(X.detach().clone(), y_input, tgt_mask, predict=predict)
+                pred = pred.unsqueeze(0)
+                y_input = torch.cat((y_input, pred), dim=0)
+            
+            EOS_TOKEN = torch.full((1, y_input.size(1), y_input.size(2)), 3, dtype=torch.float32)
+            y_input = torch.cat((y_input, EOS_TOKEN), dim=0)
+            
+            y_hat_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
+            target_spectrogram = target_module(X.detach().clone(), y_input, y_hat_mask, predict=True)
             spectrograms[..., j] = target_spectrogram
 
         # transposing it as
