@@ -136,13 +136,11 @@ class OpenUnmix(nn.Module):
 
         # permute so that batch is last for lstm
         x = x.permute(3, 0, 1, 2)
-        y = y.permute(3, 0, 1, 2)
         # get current spectrogram shape
 
         # samples (batch size), frames (duration of sequence, each frame is a time-bin of the STFT (~20ms for 5s duration, 255 frames), channels * bins is our frequency data
 
         nb_frames, nb_samples, nb_channels, nb_bins = x.data.shape
-        y_frames, y_samples, y_channels, y_bins = y.data.shape
         # print("X shape:", nb_frames, nb_samples, nb_channels, nb_bins)
         # print("Y shape:", y_frames, y_samples, y_channels, y_bins)
 
@@ -150,13 +148,16 @@ class OpenUnmix(nn.Module):
 
         # crop
         x = x[..., : self.nb_bins]
-        y = y[..., : self.nb_bins]
         # shift and scale input to mean=0 std=1 (across all bins)
         x = x + self.input_mean
         x = x * self.input_scale
 
-        y = y + self.input_mean
-        y = y * self.input_scale        
+        if not predict:
+            y = y.permute(3, 0, 1, 2)
+            y_frames, y_samples, y_channels, y_bins = y.data.shape
+            y = y[..., : self.nb_bins]
+            y = y + self.input_mean
+            y = y * self.input_scale        
 
 
         # to (nb_frames*nb_samples, nb_channels*nb_bins)
