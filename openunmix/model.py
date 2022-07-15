@@ -230,34 +230,26 @@ class OpenUnmix(nn.Module):
         lstm_out = self.lstm(x.unsqueeze(0))
         """
 
-        # print("X shape before first fc layer:", x.size())
-
         # to (nb_frames*nb_samples, nb_channels*nb_bins)
         # and encode to (nb_frames*nb_samples, hidden_size)
-        x = x.reshape(nb_samples, 1, nb_frames, self.nb_bins * nb_channels)
-        x = x.expand(nb_samples, 3, nb_frames, self.nb_bins * nb_channels)
-        x = self.vgg16(x)
-        # x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
-        
+        x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
         # normalize every instance in a batch
-        # x = self.bn1(x)
-        # x = x.reshape(nb_frames, nb_samples, self.hidden_size)
-
-        # squash range to [-1, 1]
-        # x = torch.tanh(x)
-        # print("X shape after first fc layer:", x.size())
-        # x = self.pos_encoder(x)
+        x = self.bn1(x)
+        x = x.reshape(nb_frames, nb_samples, self.hidden_size)
+        # squash range ot [-1, 1]
+        x = torch.tanh(x)
 
         # apply 3-layers of stacked LSTM
         lstm_out = self.lstm(x)
 
-        # print("Target:", tgt.size(), tgt)
+        print("Target:", tgt.size(), tgt)
 
         # lstm skip connection
         x = torch.cat([x, lstm_out[0]], -1)
         # x = torch.cat([x, transformer_out], -1)
 
         # apply cnn
+        x = self.vgg16(x)
         print('shape of x after vgg: ', x.shape)
 
         # first dense stage + batch norm
