@@ -55,7 +55,7 @@ class OpenUnmix(nn.Module):
 
         self.bn1 = BatchNorm1d(hidden_size)
 
-        self.pos_encoder1 = PositionalEncoding(hidden_size, self.nb_bins)
+        self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.5)
         encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=8, dropout=0.5, activation='gelu')
         self.encoder1 = TransformerEncoder(
             encoder_layer1, num_layers=6
@@ -75,7 +75,7 @@ class OpenUnmix(nn.Module):
             dropout=0.4 if nb_layers > 1 else 0,
         )
 
-        self.pos_encoder2 = PositionalEncoding(hidden_size * 2, self.nb_bins)
+        self.pos_encoder2 = PositionalEncoding(hidden_size * 2, dropout=0.5)
         encoder_layer2 = nn.TransformerEncoderLayer(d_model=hidden_size*2, nhead=8, dropout=0.5, activation='gelu')
         self.encoder2 = TransformerEncoder(
             encoder_layer2, num_layers=6
