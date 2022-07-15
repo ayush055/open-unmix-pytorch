@@ -235,8 +235,11 @@ class OpenUnmix(nn.Module):
         if not predict:
             y_input = y[:-1, :, :]
         else:
-            y_input = y[:-1, :, :].reshape(1, -1, y.size()[-1])
-        
+            if y.size()[0] == 1:
+                y_input = y
+            else:
+                y_input = y[-1, :, :]
+                       
         sequence_length = y_input.size(0)
         tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
 
