@@ -226,7 +226,7 @@ class OpenUnmix(nn.Module):
 
         # Frames x Samples x Hidden Size
         # y = np.swapaxes(y, 0, 1)
-
+        print(y, y.size())
         y = self.pos_encoder(y)
         print(y, y.size())
 
@@ -582,7 +582,7 @@ class Separator(nn.Module):
             for _ in range(X.size(0)):
                 # tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
                 print("Predict", predict)
-                print(target_module)
+                print(y_inputs)
                 pred = target_module(X.detach().clone(), y_input, predict=predict)
                 pred = pred.unsqueeze(0)
                 y_input = torch.cat((y_input, pred), dim=0)
