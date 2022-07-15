@@ -579,16 +579,16 @@ class Separator(nn.Module):
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
             # apply current model to get the source spectrogram
-            y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
-            # print(X.size())
-            for _ in range(X.size(-1)):
-                # tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
-                pred = target_module(X.detach().clone(), y_input, transformer_only=True).to(device)
-                pred = pred.unsqueeze(0)
-                y_input = torch.cat((y_input, pred), dim=0)
+            # y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
+            # # print(X.size())
+            # for _ in range(X.size(-1)):
+            #     # tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
+            #     pred = target_module(X.detach().clone(), y_input, transformer_only=True).to(device)
+            #     pred = pred.unsqueeze(0)
+            #     y_input = torch.cat((y_input, pred), dim=0)
             
-            EOS_TOKEN = torch.full((1, y_input.size(1), y_input.size(2)), 3, dtype=torch.float32).to(device)
-            y_input = torch.cat((y_input, EOS_TOKEN), dim=0)
+            # EOS_TOKEN = torch.full((1, y_input.size(1), y_input.size(2)), 3, dtype=torch.float32).to(device)
+            # y_input = torch.cat((y_input, EOS_TOKEN), dim=0)
             
             target_spectrogram = target_module(X.detach().clone(), y_input, predict=True)
             spectrograms[..., j] = target_spectrogram
