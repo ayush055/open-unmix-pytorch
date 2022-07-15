@@ -5,9 +5,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torch.nn import LSTM, BatchNorm1d, Linear, Parameter
+from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, TransformerEncoderLayer, TransformerEncoder
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
+import math
 
 
 class OpenUnmix(nn.Module):
@@ -54,6 +55,12 @@ class OpenUnmix(nn.Module):
 
         self.bn1 = BatchNorm1d(hidden_size)
 
+        self.pos_encoder1 = PositionalEncoding(hidden_size, self.nb_bins)
+        encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=8, dropout=0.5, activation='gelu')
+        self.encoder1 = TransformerEncoder(
+            encoder_layer1, num_layers=6
+        )
+
         if unidirectional:
             lstm_hidden_size = hidden_size
         else:
@@ -68,13 +75,19 @@ class OpenUnmix(nn.Module):
             dropout=0.4 if nb_layers > 1 else 0,
         )
 
-        fc2_hiddensize = hidden_size * 2
-        self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
+        self.pos_encoder2 = PositionalEncoding(hidden_size * 2, self.nb_bins)
+        encoder_layer2 = nn.TransformerEncoderLayer(d_model=hidden_size*2, nhead=8, dropout=0.5, activation='gelu')
+        self.encoder2 = TransformerEncoder(
+            encoder_layer2, num_layers=6
+        )
 
-        self.bn2 = BatchNorm1d(hidden_size)
+        # fc2_hiddensize = hidden_size * 2
+        # self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
+
+        # self.bn2 = BatchNorm1d(hidden_size)
 
         self.fc3 = Linear(
-            in_features=hidden_size,
+            in_features=hidden_size * 2,
             out_features=self.nb_output_bins * nb_channels,
             bias=False,
         )
@@ -137,17 +150,23 @@ class OpenUnmix(nn.Module):
         # squash range ot [-1, 1]
         x = torch.tanh(x)
 
+        x = self.pos_encoder1(x)
+        x = self.encoder1(x)
+
         # apply 3-layers of stacked LSTM
         lstm_out = self.lstm(x)
 
         # lstm skip connection
         x = torch.cat([x, lstm_out[0]], -1)
 
-        # first dense stage + batch norm
-        x = self.fc2(x.reshape(-1, x.shape[-1]))
-        x = self.bn2(x)
+        x = self.pos_encoder2(x)
+        x = self.encoder2(x)
 
-        x = F.relu(x)
+        # first dense stage + batch norm
+        # x = self.fc2(x.reshape(-1, x.shape[-1]))
+        # x = self.bn2(x)
+
+        # x = F.relu(x)
 
         # second dense stage + layer norm
         x = self.fc3(x)
@@ -347,3 +366,24 @@ class Separator(nn.Module):
                     new_estimates[key] = new_estimates[key] + estimates_dict[target]
             estimates_dict = new_estimates
         return estimates_dict
+
+class PositionalEncoding(nn.Module):
+
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 20000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Args:
+            x: Tensor, shape [seq_len, batch_size, embedding_dim]
+        """
+        x = x + self.pe[:x.size(0)]
+        return self.dropout(x)
