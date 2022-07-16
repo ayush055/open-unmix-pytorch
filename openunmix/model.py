@@ -1,3 +1,4 @@
+from tokenize import String
 from typing import Optional, Mapping
 
 import numpy as np
@@ -553,7 +554,7 @@ class Separator(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, audio: Tensor) -> Tensor:
+    def forward(self, audio: Tensor, track_path: String) -> Tensor:
         """Performing the separation on audio input
 
         Args:
@@ -578,7 +579,8 @@ class Separator(nn.Module):
         device = X.device
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
-            print(j, target_name)
+            print("Separating target:", target_name)
+            print("Track path:", track_path)
             # apply current model to get the source spectrogram
             # y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
             # # print(X.size())
