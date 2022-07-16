@@ -56,9 +56,9 @@ class OpenUnmix(nn.Module):
         self.bn1 = BatchNorm1d(hidden_size)
 
         self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.5)
-        encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4, dropout=0.5, activation='gelu')
+        encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4, dropout=0.5, activation='gelu', dim_feedforward=hidden_size*2)
         self.encoder1 = TransformerEncoder(
-            encoder_layer1, num_layers=2
+            encoder_layer1, num_layers=4
         )
 
         if unidirectional:
@@ -74,6 +74,8 @@ class OpenUnmix(nn.Module):
             batch_first=False,
             dropout=0.4 if nb_layers > 1 else 0,
         )
+
+        self.dropout_skip = nn.Dropout(0.25)
 
         # self.pos_encoder2 = PositionalEncoding(hidden_size * 2, dropout=0.5)
         # encoder_layer2 = nn.TransformerEncoderLayer(d_model=hidden_size*2, nhead=4, dropout=0.5, activation='gelu')
@@ -93,6 +95,7 @@ class OpenUnmix(nn.Module):
         )
 
         self.bn3 = BatchNorm1d(self.nb_output_bins * nb_channels)
+        self.dropout3 = nn.Dropout(0.25)
 
         if input_mean is not None:
             input_mean = torch.from_numpy(-input_mean[: self.nb_bins]).float()
@@ -158,6 +161,7 @@ class OpenUnmix(nn.Module):
 
         # lstm skip connection
         x = torch.cat([x, x_attn, lstm_out[0]], -1)
+        x = self.dropout_skip(x)
 
         # x = self.pos_encoder2(x)
         # x = self.encoder2(x)
@@ -165,8 +169,8 @@ class OpenUnmix(nn.Module):
         # first dense stage + batch norm
         x = self.fc2(x.reshape(-1, x.shape[-1]))
         x = self.bn2(x)
-
         x = F.relu(x)
+        x = self.dropout3(x)
 
         # second dense stage + layer norm
         x = self.fc3(x)
