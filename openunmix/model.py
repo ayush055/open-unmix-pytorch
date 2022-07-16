@@ -131,7 +131,7 @@ class OpenUnmix(nn.Module):
         )
 
         self.vgg16 = models.vgg16(pretrained=True)
-        self.features = nn.Sequential(*(list(self.vgg16.children())[0:7]))
+        self.features = nn.Sequential(*(list(self.vgg16.children())[0:4]))
 
         # custom_decoder_layer = CustomTransformerDecoder(nb_bins, nb_channels, hidden_size, d_model=hidden_size, nhead=8)
         # decoder_norm = LayerNorm(hidden_size, eps=1e-5)
