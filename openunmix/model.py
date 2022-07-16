@@ -11,6 +11,7 @@ from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 from torch.autograd import Variable
 from torchvision import models
+from torchvision import transforms
 from torch.nn.utils.rnn import pack_padded_sequence
 
 # from .transformer import CustomTransformerDecoder, PositionalEncoding
@@ -254,7 +255,7 @@ class OpenUnmix(nn.Module):
         x = torch.reshape(x, (nb_samples, 1, self.hidden_size * 2, nb_frames))
         x = x.expand(nb_samples, 3, self.hidden_size * 2, nb_frames)
         print('shape of x before vgg: ', x.shape)
-        x = self.features(x.resize((self.hidden_size, self.hidden_size)))
+        x = self.features(transforms.Resize((self.hidden_size, self.hidden_size))(x))
         print('shape of x after vgg: ', x.shape)
 
         # first dense stage + batch norm
