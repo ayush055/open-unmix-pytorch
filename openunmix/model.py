@@ -582,7 +582,8 @@ class Separator(nn.Module):
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
             track_path = os.path.join(track_path, target_name + ".wav")
             # print("Track path:", track_path)
-            sig, rate = torchaudio.load(track_path).to(device)
+            sig, rate = torchaudio.load(track_path)
+            sig = sig.to(device)
             # apply current model to get the source spectrogram
             # y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
             # # print(X.size())
