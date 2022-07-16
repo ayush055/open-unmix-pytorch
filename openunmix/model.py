@@ -11,6 +11,7 @@ from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 from .transformer import PositionalEncoding
 from openunmix import transformer
+import os
 
 class OpenUnmix(nn.Module):
     """OpenUnmix Core spectrogram based separation module.
@@ -579,8 +580,7 @@ class Separator(nn.Module):
         device = X.device
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
-            print("Separating target:", target_name)
-            print("Track path:", track_path)
+            track_path = os.path.join(track_path, target_name + ".wav")
             # apply current model to get the source spectrogram
             # y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
             # # print(X.size())
