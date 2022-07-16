@@ -104,6 +104,7 @@ def separate_and_evaluate(
     audio = torch.as_tensor(audio, dtype=torch.float32, device=device)
     # audio = torch.as_tensor(track.audio, dtype=torch.float32, device=device)
     audio = utils.preprocess(audio, track.rate, separator.sample_rate)
+    print("Audio shape", audio.shape)
 
     estimates = separator(audio, decoder_dir, track)
     estimates = separator.to_dict(estimates, aggregate_dict=aggregate_dict)
