@@ -82,6 +82,7 @@ class OpenUnmix(nn.Module):
         self.encoder2 = TransformerEncoder(
             encoder_layer2, num_layers=4
         )
+        self.dropout2 = nn.Dropout(0.5)
 
         fc2_hiddensize = hidden_size * 2
 
