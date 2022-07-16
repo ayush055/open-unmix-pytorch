@@ -55,13 +55,11 @@ class OpenUnmix(nn.Module):
 
         self.bn1 = BatchNorm1d(hidden_size)
 
-        self.dropout1 = nn.Dropout(0.5)
-
-        # self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.5)
-        # encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4 dropout=0.5, activation='gelu')
-        # self.encoder1 = TransformerEncoder(
-        #     encoder_layer1, num_layers=2
-        # )
+        self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.5)
+        encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4 dropout=0.5, activation='gelu')
+        self.encoder1 = TransformerEncoder(
+            encoder_layer1, num_layers=2
+        )
 
         if unidirectional:
             lstm_hidden_size = hidden_size
@@ -77,21 +75,19 @@ class OpenUnmix(nn.Module):
             dropout=0.4 if nb_layers > 1 else 0,
         )
 
-        self.pos_encoder2 = PositionalEncoding(hidden_size, dropout=0.5)
-        encoder_layer2 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4, dropout=0.5, activation='relu', dim_feedforward=hidden_size)
-        self.encoder2 = TransformerEncoder(
-            encoder_layer2, num_layers=4
-        )
-        self.dropout2 = nn.Dropout(0.5)
+        # self.pos_encoder2 = PositionalEncoding(hidden_size * 2, dropout=0.5)
+        # encoder_layer2 = nn.TransformerEncoderLayer(d_model=hidden_size*2, nhead=4, dropout=0.5, activation='gelu')
+        # self.encoder2 = TransformerEncoder(
+        #     encoder_layer2, num_layers=2
+        # )
 
-        fc2_hiddensize = hidden_size * 2
-
+        fc2_hiddensize = hidden_size * 3
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
 
         self.bn2 = BatchNorm1d(hidden_size)
 
         self.fc3 = Linear(
-            in_features=hidden_size*2,
+            in_features=hidden_size,
             out_features=self.nb_output_bins * nb_channels,
             bias=False,
         )
@@ -153,29 +149,24 @@ class OpenUnmix(nn.Module):
         x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range ot [-1, 1]
         x = torch.tanh(x)
-        x = self.dropout1(x)
 
-        # x_attn = self.pos_encoder1(x)
-        # x_attn = self.encoder1(x)
+        x_attn = self.pos_encoder1(x)
+        x_attn = self.encoder1(x)
 
         # apply 3-layers of stacked LSTM
         lstm_out = self.lstm(x)
 
         # lstm skip connection
+        x = torch.cat([x, x_attn, lstm_out[0]], -1)
 
-        enc_out = self.pos_encoder2(lstm_out[0])
-        enc_out = self.encoder2(enc_out)
-
-        x = torch.cat([x, enc_out], -1)
-
-        x = x.reshape(-1, x.shape[-1])
-        x = self.dropout2(x)
+        # x = self.pos_encoder2(x)
+        # x = self.encoder2(x)
 
         # first dense stage + batch norm
-        # x = self.fc2(x.reshape(-1, x.shape[-1]))
-        # x = self.bn2(x)
+        x = self.fc2(x.reshape(-1, x.shape[-1]))
+        x = self.bn2(x)
 
-        # x = F.relu(x)
+        x = F.relu(x)
 
         # second dense stage + layer norm
         x = self.fc3(x)
