@@ -129,6 +129,7 @@ class OpenUnmix(nn.Module):
         )
 
         self.vgg16 = models.vgg16(pretrained=True)
+        self.features = nn.Sequential(*(list(self.vgg16.children())[0:7]))
 
         # custom_decoder_layer = CustomTransformerDecoder(nb_bins, nb_channels, hidden_size, d_model=hidden_size, nhead=8)
         # decoder_norm = LayerNorm(hidden_size, eps=1e-5)
@@ -252,7 +253,8 @@ class OpenUnmix(nn.Module):
 
         x = torch.reshape(x, (nb_samples, 1, self.hidden_size * 2, nb_frames))
         x = x.expand(nb_samples, 3, self.hidden_size * 2, nb_frames)
-        x = self.vgg16(x)
+        print('shape of x before vgg: ', x.shape)
+        x = self.features(x)
         print('shape of x after vgg: ', x.shape)
 
         # first dense stage + batch norm
