@@ -55,6 +55,8 @@ class OpenUnmix(nn.Module):
 
         self.bn1 = BatchNorm1d(hidden_size)
 
+        self.dropout1 = nn.Dropout(0.5)
+
         # self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.5)
         # encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4 dropout=0.5, activation='gelu')
         # self.encoder1 = TransformerEncoder(
@@ -150,6 +152,7 @@ class OpenUnmix(nn.Module):
         x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range ot [-1, 1]
         x = torch.tanh(x)
+        x = self.dropout1(x)
 
         # x_attn = self.pos_encoder1(x)
         # x_attn = self.encoder1(x)
@@ -164,6 +167,9 @@ class OpenUnmix(nn.Module):
 
         x = torch.cat([x, enc_out], -1)
 
+        x = x.reshape(-1, x.shape[-1])
+        x = self.dropout2(x)
+
         # first dense stage + batch norm
         # x = self.fc2(x.reshape(-1, x.shape[-1]))
         # x = self.bn2(x)
@@ -171,7 +177,7 @@ class OpenUnmix(nn.Module):
         # x = F.relu(x)
 
         # second dense stage + layer norm
-        x = self.fc3(x.reshape(-1, x.shape[-1]))
+        x = self.fc3(x)
         x = self.bn3(x)
 
         # reshape back to original dim
