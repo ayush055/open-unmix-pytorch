@@ -13,6 +13,7 @@ from .transformer import PositionalEncoding
 from openunmix import transformer
 import os
 import torchaudio
+from openunmix import utils
 
 class OpenUnmix(nn.Module):
     """OpenUnmix Core spectrogram based separation module.
@@ -530,6 +531,7 @@ class Separator(nn.Module):
         self.residual = residual
         self.softmask = softmask
         self.wiener_win_len = wiener_win_len
+        self.sample_rate = sample_rate
 
         self.stft, self.istft = make_filterbanks(
             n_fft=n_fft,
@@ -555,7 +557,7 @@ class Separator(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, audio: Tensor, track_path: String) -> Tensor:
+    def forward(self, audio: Tensor, decoder_dir, track) -> Tensor:
         """Performing the separation on audio input
 
         Args:
@@ -580,9 +582,12 @@ class Separator(nn.Module):
         device = X.device
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
+            track_path = os.path.join(decoder_dir, track.name)
             track_path = os.path.join(track_path, target_name + ".wav")
             # print("Track path:", track_path)
             sig, rate = torchaudio.load(track_path)
+            sig = torch.as_tensor(sig, dtype=torch.float32, device=device)
+            sig = utils.preprocess(sig, track.rate, self.sample_rate)
             sig = sig.to(device)
             print("Sig shape:", sig.shape)
             # apply current model to get the source spectrogram

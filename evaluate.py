@@ -106,7 +106,7 @@ def separate_and_evaluate(
     audio = utils.preprocess(audio, track.rate, separator.sample_rate)
 
     track_path = os.path.join(decoder_dir, track.name)
-    estimates = separator(audio, track_path)
+    estimates = separator(audio, decoder_dir, track)
     estimates = separator.to_dict(estimates, aggregate_dict=aggregate_dict)
 
     for key in estimates:
