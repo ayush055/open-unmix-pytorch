@@ -578,6 +578,7 @@ class Separator(nn.Module):
         device = X.device
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
+            print(j, target_name, target_module)
             # apply current model to get the source spectrogram
             # y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
             # # print(X.size())
