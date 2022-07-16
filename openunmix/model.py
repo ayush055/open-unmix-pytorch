@@ -578,7 +578,7 @@ class Separator(nn.Module):
         device = X.device
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
-            print(j, target_name, target_module)
+            print(j, target_name)
             # apply current model to get the source spectrogram
             # y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
             # # print(X.size())
@@ -591,7 +591,7 @@ class Separator(nn.Module):
             # EOS_TOKEN = torch.full((1, y_input.size(1), y_input.size(2)), 3, dtype=torch.float32).to(device)
             # y_input = torch.cat((y_input, EOS_TOKEN), dim=0)
             
-            target_spectrogram = target_module(X.detach().clone(), y_input, predict=True)
+            target_spectrogram = target_module(X.detach().clone(), predict=True)
             spectrograms[..., j] = target_spectrogram
 
         # transposing it as
