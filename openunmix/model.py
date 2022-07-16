@@ -587,6 +587,8 @@ class Separator(nn.Module):
             sig, rate = torchaudio.load(track_path)
             sig = torch.as_tensor(sig, dtype=torch.float32, device=device)
             sig = utils.preprocess(sig, track.rate, self.sample_rate)
+            sig = self.stft(sig)
+            sig = self.complexnorm(sig)
             sig = sig.to(device)
             print("Sig shape:", sig.shape)
             # apply current model to get the source spectrogram
