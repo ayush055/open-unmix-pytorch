@@ -12,6 +12,7 @@ from .transforms import make_filterbanks, ComplexNorm
 from .transformer import PositionalEncoding
 from openunmix import transformer
 import os
+import torchaudio
 
 class OpenUnmix(nn.Module):
     """OpenUnmix Core spectrogram based separation module.
@@ -205,7 +206,7 @@ class OpenUnmix(nn.Module):
         # print("Y shape before fc layer:", y.size())
 
         # Frames x Samples x Frequency Domain
-        if not predict and not transformer_only:
+        if not transformer_only:
             y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
             y = self.bn_decoder(y)
             y = y.reshape(y_frames, y_samples, self.hidden_size)
@@ -581,7 +582,8 @@ class Separator(nn.Module):
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
             track_path = os.path.join(track_path, target_name + ".wav")
-            print("Track path:", track_path)
+            # print("Track path:", track_path)
+            sig, rate = torchaudio.load(track_path).to(device)
             # apply current model to get the source spectrogram
             # y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
             # # print(X.size())
@@ -594,7 +596,7 @@ class Separator(nn.Module):
             # EOS_TOKEN = torch.full((1, y_input.size(1), y_input.size(2)), 3, dtype=torch.float32).to(device)
             # y_input = torch.cat((y_input, EOS_TOKEN), dim=0)
             
-            target_spectrogram = target_module(X.detach().clone(), predict=True)
+            target_spectrogram = target_module(X.detach().clone(), sig, predict=True)
             spectrograms[..., j] = target_spectrogram
 
         # transposing it as
