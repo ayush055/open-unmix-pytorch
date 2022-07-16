@@ -9,6 +9,7 @@ from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, TransformerEncoderLay
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 import math
+from torch.autograd import Variable
 
 
 class OpenUnmix(nn.Module):
@@ -44,6 +45,7 @@ class OpenUnmix(nn.Module):
         super(OpenUnmix, self).__init__()
 
         self.nb_output_bins = nb_bins
+        self.nb_layers = nb_layers
         if max_bin:
             self.nb_bins = max_bin
         else:
@@ -119,6 +121,14 @@ class OpenUnmix(nn.Module):
         for p in self.parameters():
             p.requires_grad = False
         self.eval()
+    
+    def attention_net(self, lstm_output, final_state):
+        hidden = final_state.view(-1, self.hidden_size * 2, self.nb_layers)   # hidden : [batch_size, n_hidden * num_directions(=2), 1(=n_layer)]
+        attn_weights = torch.bmm(lstm_output, hidden).squeeze(2) # attn_weights : [batch_size, n_step]
+        soft_attn_weights = F.softmax(attn_weights, 1)
+        # [batch_size, n_hidden * num_directions(=2), n_step] * [batch_size, n_step, 1] = [batch_size, n_hidden * num_directions(=2), 1]
+        context = torch.bmm(lstm_output.transpose(1, 2), soft_attn_weights.unsqueeze(2)).squeeze(2)
+        return context, soft_attn_weights.data.numpy() # context : [batch_size, n_hidden * num_directions(=2)]
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -153,14 +163,20 @@ class OpenUnmix(nn.Module):
         # squash range ot [-1, 1]
         x = torch.tanh(x)
 
-        x_attn = self.pos_encoder1(x)
-        x_attn = self.encoder1(x)
+        # x_attn = self.pos_encoder1(x)
+        # x_attn = self.encoder1(x)
+
+        hidden_state = Variable(torch.zeros(self.nb_layers*2, nb_samples, self.hidden_size)) # [num_layers(=1) * num_directions(=2), batch_size, n_hidden]
+        cell_state = Variable(torch.zeros(self.nb_layers*2, nb_samples, self.hidden_size)) # [num_layers(=1) * num_directions(=2), batch_size, n_hidden]
 
         # apply 3-layers of stacked LSTM
-        lstm_out = self.lstm(x)
+        output, (final_hidden_state, final_cell_state) = self.lstm(x, (hidden_state, cell_state))
+        lstm_out = lstm_out.permute(1, 0, 2)
+
+        attn_output, attention = self.attention_net(lstm_out, final_hidden_state)
 
         # lstm skip connection
-        x = torch.cat([x, x_attn, lstm_out[0]], -1)
+        x = torch.cat([x, lstm_out[0]], -1)
         x = self.dropout_skip(x)
 
         # x = self.pos_encoder2(x)
