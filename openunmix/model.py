@@ -531,7 +531,6 @@ class Separator(nn.Module):
         self.residual = residual
         self.softmask = softmask
         self.wiener_win_len = wiener_win_len
-        self.sample_rate = sample_rate
 
         self.stft, self.istft = make_filterbanks(
             n_fft=n_fft,
