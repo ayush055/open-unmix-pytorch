@@ -256,8 +256,9 @@ class OpenUnmix(nn.Module):
         x = x.expand(nb_samples, 3, self.hidden_size * 2, nb_frames)
         print('shape of x before vgg: ', x.shape)
         transform = transforms.Resize((self.hidden_size, self.hidden_size))
+        x = transform(x)
         print('shape of x after resize: ', x.shape)
-        x = self.features(transform(x))
+        x = self.features(x)
         print('shape of x after vgg: ', x.shape)
 
         # first dense stage + batch norm
