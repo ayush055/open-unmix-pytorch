@@ -254,7 +254,7 @@ class OpenUnmix(nn.Module):
         x = torch.reshape(x, (nb_samples, 1, self.hidden_size * 2, nb_frames))
         x = x.expand(nb_samples, 3, self.hidden_size * 2, nb_frames)
         print('shape of x before vgg: ', x.shape)
-        x = self.features(x)
+        x = self.features(x.resize((self.hidden_size, self.hidden_size)))
         print('shape of x after vgg: ', x.shape)
 
         # first dense stage + batch norm
