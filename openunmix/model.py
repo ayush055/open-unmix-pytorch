@@ -584,6 +584,7 @@ class Separator(nn.Module):
             # print("Track path:", track_path)
             sig, rate = torchaudio.load(track_path)
             sig = sig.to(device)
+            print("Sig shape:", sig.shape)
             # apply current model to get the source spectrogram
             # y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
             # # print(X.size())
