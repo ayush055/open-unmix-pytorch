@@ -83,7 +83,7 @@ class OpenUnmix(nn.Module):
         #     encoder_layer2, num_layers=2
         # )
 
-        fc2_hiddensize = hidden_size * 3
+        fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
 
         self.bn2 = BatchNorm1d(hidden_size)
@@ -153,15 +153,15 @@ class OpenUnmix(nn.Module):
         # squash range ot [-1, 1]
         x = torch.tanh(x)
 
-        x_attn = self.pos_encoder1(x)
-        x_attn = self.encoder1(x)
+        x = self.pos_encoder1(x)
+        x = self.encoder1(x)
 
         # apply 3-layers of stacked LSTM
         lstm_out = self.lstm(x)
 
         # lstm skip connection
-        x = torch.cat([x, x_attn, lstm_out[0]], -1)
-        x = self.dropout_skip(x)
+        x = torch.cat([x, lstm_out[0]], -1)
+        # x = self.dropout_skip(x)
 
         # x = self.pos_encoder2(x)
         # x = self.encoder2(x)
