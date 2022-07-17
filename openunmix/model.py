@@ -55,8 +55,8 @@ class OpenUnmix(nn.Module):
 
         self.bn1 = BatchNorm1d(hidden_size)
 
-        self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.5)
-        encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4, dropout=0.5, activation='gelu', dim_feedforward=hidden_size*2)
+        self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.25)
+        encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4, dropout=0.25, activation='relu')
         self.encoder1 = TransformerEncoder(
             encoder_layer1, num_layers=4
         )
@@ -149,9 +149,10 @@ class OpenUnmix(nn.Module):
         x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
         # normalize every instance in a batch
         x = self.bn1(x)
+        x = torch.relu(x)
         x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range ot [-1, 1]
-        x = torch.tanh(x)
+        # x = torch.tanh(x)
 
         x = self.pos_encoder1(x)
         x = self.encoder1(x)
