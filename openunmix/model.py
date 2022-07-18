@@ -251,7 +251,7 @@ class OpenUnmix(nn.Module):
         sequence_length = y_input.size(0)
         tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
 
-        print(sequence_length, y_input.size(), tgt_mask.size())
+        # print(sequence_length, y_input.size(), tgt_mask.size())
         # print("Y shifted shape", y_input.size())
 
         # y_size = (y_frames, y_samples, y_input.size(-1))
@@ -273,7 +273,7 @@ class OpenUnmix(nn.Module):
         # print("Y shape transformed:", y.shape)
         # tgt = torch.zeros(nb_frames, nb_samples, self.hidden_size).cuda()
         transformer_out = self.transformer(x, y_input, tgt_mask=tgt_mask)
-        print("Transformer out shape", transformer_out.size())
+        # print("Transformer out shape", transformer_out.size())
         # print(transformer_out.size())
 
         # lstm skip connection
@@ -281,12 +281,12 @@ class OpenUnmix(nn.Module):
         # print("Transformer out:", transformer_only.size())
         # print("X shape:", x.size())
 
-        print("Transformer only", transformer_only)
+        # print("Transformer only", transformer_only)
         if not transformer_only:
             x = x[1:-1, :, :]
             transformer_out = transformer_out[1:, :, :]
         else:
-            print("Transformer out shape", transformer_out.size())
+            # print("Transformer out shape", transformer_out.size())
             return transformer_out[-1, :, :]
         
         x = torch.cat([x, transformer_out], -1)
