@@ -208,6 +208,12 @@ class OpenUnmix(nn.Module):
 
         # Frames x Samples x Frequency Domain
         if not transformer_only:
+            # if not predict:
+            #     if torch.rand(1) > 0.25:
+            #         noise = torch.randn(y.size()).to(self.device)
+            #         print("Adding noise to y tensor")
+            #         # add noise to y
+            #         y += noise
             y = self.y_dropout(y)
             y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
             y = self.bn_decoder(y)
@@ -215,12 +221,6 @@ class OpenUnmix(nn.Module):
             # print("X shape:", x.size())
             # print("Y shape", y.size())
             y = torch.tanh(y)
-            if not predict:
-                if torch.rand(1) > 0.25:
-                    noise = torch.randn(y.size()).to(self.device)
-                    print("Adding noise to y tensor")
-                    # add noise to y
-                    y += noise    
 
             # y = y.reshape(y_frames, y_samples, 512)
             # y = y.reshape(y_frames * y_samples, 512)
