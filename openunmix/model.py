@@ -55,25 +55,27 @@ class OpenUnmix(nn.Module):
 
         self.bn1 = BatchNorm1d(hidden_size)
 
-        self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.25)
-        encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4, dropout=0.25, activation='relu')
-        self.encoder1 = TransformerEncoder(
-            encoder_layer1, num_layers=4
-        )
+        # self.pos_encoder1 = PositionalEncoding(hidden_size, dropout=0.25)
+        # encoder_layer1 = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=4, dropout=0.25, activation='relu')
+        # self.encoder1 = TransformerEncoder(
+        #     encoder_layer1, num_layers=4
+        # )
 
         if unidirectional:
-            lstm_hidden_size = hidden_size
+            self.lstm_hidden_size = hidden_size
         else:
-            lstm_hidden_size = hidden_size // 2
+            self.lstm_hidden_size = hidden_size // 2
 
         self.lstm = LSTM(
             input_size=hidden_size,
-            hidden_size=lstm_hidden_size,
+            hidden_size=self.lstm_hidden_size,
             num_layers=nb_layers,
             bidirectional=not unidirectional,
             batch_first=False,
             dropout=0.4 if nb_layers > 1 else 0,
         )
+
+        self.fc = Linear(self.lstm_hidden_size, hidden_size, bias=False)
 
         self.dropout_skip = nn.Dropout(0.25)
 
@@ -84,7 +86,7 @@ class OpenUnmix(nn.Module):
         # )
 
         fc2_hiddensize = hidden_size * 2
-        self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
+        self.fc2 = Linear(in_features=self.lstm_hidden_size + hidden_size, out_features=hidden_size, bias=False)
 
         self.bn2 = BatchNorm1d(hidden_size)
 
@@ -120,6 +122,22 @@ class OpenUnmix(nn.Module):
             p.requires_grad = False
         self.eval()
 
+    def attnetwork(self, encoder_out, final_hidden):
+        hidden = final_hidden.squeeze(0)
+        #M = torch.tanh(encoder_out)
+        # print("atten shapes", encoder_out.shape, hidden.unsqueeze(2).shape)
+        attn_weights = torch.bmm(encoder_out, hidden.unsqueeze(2)).squeeze(2)
+        soft_attn_weights = F.softmax(attn_weights, 1)
+        # print("soft attn weights", soft_attn_weights.shape)
+        return encoder_out * soft_attn_weights.unsqueeze(2)
+        print((encoder_out * soft_attn_weights.unsqueeze(2)).shape)
+        new_hidden = torch.bmm(encoder_out.transpose(1,2), soft_attn_weights.unsqueeze(2)).squeeze(2)
+        #print (wt.shape, new_hidden.shape)
+        #new_hidden = torch.tanh(new_hidden)
+        #print ('UP:', new_hidden, new_hidden.shape)
+        
+        return new_hidden
+
     def forward(self, x: Tensor) -> Tensor:
         """
         Args:
@@ -154,14 +172,31 @@ class OpenUnmix(nn.Module):
         # squash range ot [-1, 1]
         # x = torch.tanh(x)
 
-        x = self.pos_encoder1(x)
-        x = self.encoder1(x)
+        # x = self.pos_encoder1(x)
+        # x = self.encoder1(x)
 
         # apply 3-layers of stacked LSTM
-        lstm_out = self.lstm(x)
+        lstm_out, (hn, cn) = self.lstm(x)
+        fbout = lstm_out[:, :, :self.lstm_hidden_size]+ lstm_out[:, :, self.lstm_hidden_size:] #sum bidir outputs F+B
+        fbout = fbout.permute(1,0,2)
+        fbhn = (torch.sum(hn, dim=0)).unsqueeze(0)
+        #print (fbhn.shape, fbout.shape)
+        # print(fbout.shape, fbhn.shape)
+        attn_out = self.attnetwork(fbout, fbhn)
+        attn_out = attn_out.permute(1,0,2)
+        # print(attn_out.shape)
+        #attn1_out = self.attnetwork1(output, hn)
+        # print("attn out", attn_out.shape)
+        # logits = self.fc(attn_out.reshape(-1, attn_out.shape[-1]))
+        # print("Logits", logits.shape)
+        # print(logits.shape)
+        # logits = self.bn(logits)
+        # logits = F.relu(logits)
 
         # lstm skip connection
-        x = torch.cat([x, lstm_out[0]], -1)
+        # print(x.shape, attn_out.shape)
+        x = torch.cat([x, attn_out], -1)
+        # print(x.shape)
         # x = self.dropout_skip(x)
 
         # x = self.pos_encoder2(x)
