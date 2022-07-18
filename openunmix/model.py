@@ -40,7 +40,7 @@ class OpenUnmix(nn.Module):
         self,
         nb_bins: int = 4096,
         nb_channels: int = 2,
-        hidden_size: int = 512/4,
+        hidden_size: int = 512,
         nb_layers: int = 3,
         unidirectional: bool = False,
         input_mean: Optional[np.ndarray] = None,
@@ -86,21 +86,36 @@ class OpenUnmix(nn.Module):
 
         """
 
-        """
+        
         # self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
 
-        self.conv1 = torch.nn.Conv2d(2, 8, kernel_size = 7, stride = 1)
-        self.conv2 = torch.nn.Conv2d(8, 16, kernel_size = 5, stride = 1)
-        self.pool1 = torch.nn.MaxPool2d(kernel_size = 3)
-        self.conv3 = torch.nn.Conv2d(16, 32, kernel_size = 5, stride = 1)
-        self.conv4 = torch.nn.Conv2d(32, 64, kernel_size = 3, stride = 1)
-        self.pool2 = torch.nn.MaxPool2d(kernel_size=3)
-
+        self.conv1 = torch.nn.Conv2d(2, 64, kernel_size=3, stride=2, padding=1)
+        self.conv2 = torch.nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1)
+        self.maxpool1 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1)
+        self.conv3 = torch.nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1)
+        self.conv4 = torch.nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1)
+        self.maxpool2 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1)
+        self.conv5 = torch.nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1)
+        self.conv6 = torch.nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
+        self.conv7 = torch.nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
+        self.maxpool3 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1)
+        self.conv8 = torch.nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1)
+        self.conv9 = torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1)
+        self.conv10 = torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1)
+        self.maxpool4 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1)
+        self.conv11 = torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1)
+        self.conv12 = torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1)
+        self.conv13 = torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1)
+        self.maxpool5 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1)
+        
+        self.fc_cnn = Linear(in_features=hidden_size, out_features=255, bias=False)
+        self.bn_cnn = BatchNorm1d(255)
+        
         # change the 576 if conv layer parameters are changed.
-        self.fc1 = torch.nn.Linear(576, 512)
+        # self.fc1 = torch.nn.Linear(576, 512)
         # self.fc2 = torch.nn.Linear(576, 512)
-        """
-        self.flatten = nn.Flatten()
+        
+        # self.flatten = nn.Flatten()
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -109,7 +124,7 @@ class OpenUnmix(nn.Module):
         self.resnet.fc = nn.Sequential(nn.Linear(self.resnet.fc.in_features, hidden_size))
         """
 
-        self.fc1 = Linear(in_features=hidden_size, out_features=hidden_size, bias=False)
+        self.fc1 = Linear(in_features=nb_channels * self.nb_bins, out_features=hidden_size, bias=False)
 
         # maybe comment this out idk
         self.bn1 = BatchNorm1d(hidden_size)
@@ -130,25 +145,30 @@ class OpenUnmix(nn.Module):
             dropout=0.4 if nb_layers > 1 else 0,
         )
 
-        self.vgg16 = models.vgg16(pretrained=True)
-        self.features = nn.Sequential(*(list(self.vgg16.children())[0:3]))
+        # self.lstm2 = LSTM(
+        #     input_size=46*8,
+        #     hidden_size=lstm_hidden_size,
+        #     num_layers=nb_layers,
+        #     bidirectional=not unidirectional,
+        #     batch_first=False,
+        #     dropout=0.4 if nb_layers > 1 else 0,
+        # )
 
         # custom_decoder_layer = CustomTransformerDecoder(nb_bins, nb_channels, hidden_size, d_model=hidden_size, nhead=8)
         # decoder_norm = LayerNorm(hidden_size, eps=1e-5)
         # self.decoder = TransformerDecoder(decoder_layer=custom_decoder_layer, num_layers=6, norm=decoder_norm)
         # self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.1)
-        self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
-        self.bn_decoder = BatchNorm1d(hidden_size)
+        # self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
+        # self.bn_decoder = BatchNorm1d(hidden_size)
         # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.1)
         # self.transformer = Transformer(d_model=hidden_size)
 
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
-
         self.bn2 = BatchNorm1d(hidden_size)
 
         self.fc3 = Linear(
-            in_features=hidden_size,
+            in_features=hidden_size + 92,
             out_features=self.nb_output_bins * nb_channels,
             bias=False,
         )
@@ -205,7 +225,30 @@ class OpenUnmix(nn.Module):
         y = y[..., : self.nb_bins]
         # shift and scale input to mean=0 std=1 (across all bins)
         x = x + self.input_mean
-        x = x * self.input_scale     
+        x = x * self.input_scale
+        
+        x_img = x.permute(1, 2, 3, 0)
+        
+        # print(x_img.shape)
+        x_img = F.relu(self.conv1(x_img))
+        x_img = F.relu(self.conv2(x_img))
+        x_img = self.maxpool1(x_img)
+        x_img = F.relu(self.conv3(x_img))
+        x_img = F.relu(self.conv4(x_img))
+        x_img = self.maxpool2(x_img)
+        x_img = F.relu(self.conv5(x_img))
+        x_img = F.relu(self.conv6(x_img))
+        x_img = F.relu(self.conv7(x_img))
+        x_img = self.maxpool3(x_img)
+        x_img = F.relu(self.conv8(x_img))
+        x_img = F.relu(self.conv9(x_img))
+        x_img = F.relu(self.conv10(x_img))
+        x_img = self.maxpool4(x_img)
+        
+        # x_img = F.relu(self.conv11(x_img))
+        # x_img = F.relu(self.conv12(x_img))
+        # x_img = F.relu(self.conv13(x_img))
+        # x_img = self.maxpool5(x_img)
         
         """ simple cnn model
         x = x.permute(1, 2, 3, 0)
@@ -253,26 +296,34 @@ class OpenUnmix(nn.Module):
 
         # apply cnn
 
-        x = torch.reshape(x, (nb_samples, 1, self.hidden_size * 2, nb_frames))
-        x = x.expand(nb_samples, 3, self.hidden_size * 2, nb_frames)
-        print('shape of x before vgg: ', x.shape)
-        transform = transforms.Resize((self.hidden_size, self.hidden_size))
-        x = transform(x)
-        print('shape of x after resize: ', x.shape)
-        x = self.features(x)
-        print('shape of x after vgg: ', x.shape)
+        # print(x_img.shape)
+        # print("x_img input shape:", x_img.reshape(-1, x_img.shape[1]).shape)
+        x_img = self.fc_cnn(x_img.reshape(-1, x_img.shape[1]))
+        x_img = self.bn_cnn(x_img)
+        x_img = F.relu(x_img)
+        # print(x_img.shape)
+        x_img = x_img.reshape(nb_frames * nb_samples, -1)
 
-        # first dense stage + batch norm
-        x = self.flatten(x)
-        print('shape of x after flatten: ', x.shape)
+        # print("x_img shape after fc layer", x_img.shape)
+
+        # print('shape of x after flatten: ', x.shape)
         x = self.fc2(x.reshape(-1, x.shape[-1]))
         x = self.bn2(x)
 
         x = F.relu(x)
 
+        # print("shape of x after first fc layer", x.shape)
+
         # second dense stage + layer norm
+        
+        x = torch.cat([x, x_img], -1)
+        
+        # print(x.shape)
+        
         x = self.fc3(x)
         x = self.bn3(x)
+
+        # print(x.shape)
 
         # reshape back to original dim
         x = x.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
