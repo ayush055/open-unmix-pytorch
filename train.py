@@ -51,7 +51,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
             x, y = x.to(device), y.to(device)
             X = encoder(x)
             Y = encoder(y)
-            Y_hat = unmix(X, Y)
+            Y_hat = unmix(X, Y, predict=True)
             loss = torch.nn.functional.mse_loss(Y_hat, Y)
             losses.update(loss.item(), Y.size(1))
         return losses.avg
