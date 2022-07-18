@@ -62,6 +62,7 @@ class OpenUnmix(nn.Module):
         self.bn1 = BatchNorm1d(hidden_size)
 
         self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.5)
+        self.y_dropout = nn.Dropout(0.25)
 
         if unidirectional:
             lstm_hidden_size = hidden_size
@@ -207,6 +208,12 @@ class OpenUnmix(nn.Module):
 
         # Frames x Samples x Frequency Domain
         if not transformer_only:
+            if not predict:
+                noise = torch.randn(y.size()).to(self.device)
+                print("Adding noise to y tensor")
+                if torch.rand() > 0.5:
+                    y += noise
+                y = self.y_dropout(y)
             y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
             y = self.bn_decoder(y)
             y = y.reshape(y_frames, y_samples, self.hidden_size)
