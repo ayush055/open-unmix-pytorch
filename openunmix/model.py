@@ -210,8 +210,8 @@ class OpenUnmix(nn.Module):
         if not transformer_only:
             if not predict:
                 noise = torch.randn(y.size()).to(self.device)
-                # print("Adding noise to y tensor")
                 if torch.rand() > 0.5:
+                    print("Adding noise to y tensor")
                     y += noise
                 y = self.y_dropout(y)
             y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
