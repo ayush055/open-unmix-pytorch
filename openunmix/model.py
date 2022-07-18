@@ -217,7 +217,7 @@ class OpenUnmix(nn.Module):
             y = torch.tanh(y)
             if not predict:
                 if torch.rand(1) > 0.25:
-                    noise = torch.randn(y.size()).to(self.device) * 10
+                    noise = torch.randn(y.size()).to(self.device)
                     print("Adding noise to y tensor")
                     # add noise to y
                     y += noise    
