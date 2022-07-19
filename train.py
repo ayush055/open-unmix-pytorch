@@ -75,8 +75,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 # preds.append(Y_hat)
                 # loss += torch.nn.functional.mse_loss(Y_hat, Y)
             print("Last frame", i + hop_length, i + img_width)
-            preds[0][:hop_length, ...] *= 2
-            preds[-1][hop_length:, ...] *= 2
+            # preds[0][:hop_length, ...] *= 2
+            # preds[-1][hop_length:, ...] *= 2
             loss /= i
             Y_hat = unmix(X, Y)
             loss = torch.nn.functional.mse_loss(Y_hat, Y)
