@@ -313,7 +313,7 @@ class OpenUnmix(nn.Module):
         x += self.output_mean
 
         # since our output is non-negative, we can apply RELU
-        # x = F.relu(x) * mix
+        x = F.relu(x) * mix
         # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
         return x.permute(1, 2, 3, 0)
 
