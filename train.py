@@ -57,9 +57,10 @@ def valid(args, unmix, encoder, device, valid_sampler):
             loss = 0
             hop_length = img_width//2 + 1
             num_frames = X.size(-1)
-            arr = np.zeros(X.size())
+            arr = torch.zeros(X.size())
             print(arr.shape)
             num_hops = 0
+            print("Num frames:", num_frames)
             for i in range(0, num_frames, hop_length):                
                 num_hops += 1    
                 print("Indexing from {} to {}".format(i, i+img_width))
@@ -67,17 +68,17 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 if i + img_width > num_frames:
                     padding = (0, i + img_width - num_frames)
                     X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
-                    # Y_hat = unmix(X_tmp, Y_tmp)
+                    Y_hat = unmix(X_tmp, Y_tmp)
                     print("Only need last {} frames".format(num_frames - i))
-                    # arr[..., i:] += Y_hat[num_frames - i]
+                    arr[..., i:] += Y_hat[..., num_frames - i]
                     # loss += torch.nn.functional.mse_loss(Y_hat, Y)
                     break
 
-                # Y_hat = unmix(X_tmp, Y_tmp)
-                # arr[..., i:i+img_width] += Y_hat
+                Y_hat = unmix(X_tmp, Y_tmp)
+                arr[..., i:i+img_width] += Y_hat
                 
                 # loss += torch.nn.functional.mse_loss(Y_hat, Y)
-            print("Last frame", i + hop_length, i + img_width, num_hops)
+            # print("Last frame", i + hop_length, i + img_width, num_hops)
 
             # Multiply first window and last extra part of window by 2 to make sure that the entire array is doubled
             arr[..., :hop_length] *= 2
@@ -85,7 +86,6 @@ def valid(args, unmix, encoder, device, valid_sampler):
 
             # Average out window results
             arr /= 2
-
             loss /= i
             Y_hat = unmix(X, Y)
             loss = torch.nn.functional.mse_loss(Y_hat, Y)
