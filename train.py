@@ -58,9 +58,11 @@ def valid(args, unmix, encoder, device, valid_sampler):
             hop_length = img_width//2 + 1
             num_frames = X.size(-1)
             preds = []
+            arr = np.array(num_frames)
             for i in range(0, num_frames, hop_length):                    
                 print("Indexing from {} to {}".format(i, i+img_width))
                 X_tmp, Y_tmp = X[:, :, :, i:(i + img_width) + 1], Y[:, :, :, i:(i + img_width) + 1]
+                arr[i:i+img_width+1] += 1
                 if i + img_width > num_frames:
                     padding = (0, i + img_width - num_frames)
                     X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
@@ -68,6 +70,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     # preds.append(Y_hat)
                     # loss += torch.nn.functional.mse_loss(Y_hat, Y)
                     break
+                print(arr)
 
                 # Y_hat = unmix(X_tmp, Y_tmp)
                 # preds.append(Y_hat)
