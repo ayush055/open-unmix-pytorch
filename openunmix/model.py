@@ -7,15 +7,20 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torch import Tensor
-from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer, LayerNorm, TransformerDecoder
+from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
+<<<<<<< HEAD
 from torch.autograd import Variable
 from torchvision import models
 from torchvision import transforms
 from torch.nn.utils.rnn import pack_padded_sequence
 
 # from .transformer import CustomTransformerDecoder, PositionalEncoding
+=======
+from .transformer import PositionalEncoding
+from openunmix import transformer
+>>>>>>> transformer-window
 
 class OpenUnmix(nn.Module):
     """OpenUnmix Core spectrogram based separation module.
@@ -48,6 +53,8 @@ class OpenUnmix(nn.Module):
         max_bin: Optional[int] = None,
     ):
         super(OpenUnmix, self).__init__()
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         self.nb_output_bins = nb_bins
         if max_bin:
@@ -133,21 +140,21 @@ class OpenUnmix(nn.Module):
         # maybe comment this out idk
         self.bn1 = BatchNorm1d(hidden_size)
 
-        # self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.1)
+        self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.5)
 
         if unidirectional:
             lstm_hidden_size = hidden_size
         else:
             lstm_hidden_size = hidden_size // 2
 
-        self.lstm = LSTM(
-            input_size=hidden_size,
-            hidden_size=lstm_hidden_size,
-            num_layers=nb_layers,
-            bidirectional=not unidirectional,
-            batch_first=False,
-            dropout=0.4 if nb_layers > 1 else 0,
-        )
+        # self.lstm = LSTM(
+        #     input_size=hidden_size,
+        #     hidden_size=lstm_hidden_size,
+        #     num_layers=nb_layers,
+        #     bidirectional=not unidirectional,
+        #     batch_first=False,
+        #     dropout=0.4 if nb_layers > 1 else 0,
+        # )
 
         # self.lstm2 = LSTM(
         #     input_size=46*8,
@@ -161,12 +168,18 @@ class OpenUnmix(nn.Module):
         # custom_decoder_layer = CustomTransformerDecoder(nb_bins, nb_channels, hidden_size, d_model=hidden_size, nhead=8)
         # decoder_norm = LayerNorm(hidden_size, eps=1e-5)
         # self.decoder = TransformerDecoder(decoder_layer=custom_decoder_layer, num_layers=6, norm=decoder_norm)
-        # self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.1)
-        # self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
-        # self.bn_decoder = BatchNorm1d(hidden_size)
-        # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.1)
-        # self.transformer = Transformer(d_model=hidden_size)
-
+        # self.pos_encoder_1 = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.25)
+        # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
+        self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
+        self.bn_decoder = BatchNorm1d(hidden_size)
+        self.transformer = Transformer(
+            d_model=hidden_size,
+            nhead=4,
+            num_encoder_layers=2,
+            num_decoder_layers=2,
+            dropout=0.5,
+            activation='gelu',
+        )
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
         self.bn2 = BatchNorm1d(hidden_size)
@@ -210,7 +223,7 @@ class OpenUnmix(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, x: Tensor, y: Tensor) -> Tensor:
+    def forward(self, x: Tensor, y: Tensor, transformer_only=False, predict=False) -> Tensor:
         """
         Args:
             x: input spectrogram of shape
@@ -223,10 +236,11 @@ class OpenUnmix(nn.Module):
 
         # permute so that batch is last for lstm
         x = x.permute(3, 0, 1, 2)
-        y = y.permute(3, 0, 1, 2)
         # get current spectrogram shape
+
+        # samples (batch size), frames (duration of sequence, each frame is a time-bin of the STFT (~20ms for 5s duration, 255 frames), channels * bins is our frequency data
+
         nb_frames, nb_samples, nb_channels, nb_bins = x.data.shape
-        y_frames, y_samples, y_channels, y_bins = y.data.shape
         # print("X shape:", nb_frames, nb_samples, nb_channels, nb_bins)
         # print("Y shape:", y_frames, y_samples, y_channels, y_bins)
 
@@ -234,7 +248,6 @@ class OpenUnmix(nn.Module):
 
         # crop
         x = x[..., : self.nb_bins]
-        y = y[..., : self.nb_bins]
         # shift and scale input to mean=0 std=1 (across all bins)
         x = x + self.input_mean
         x = x * self.input_scale
@@ -299,17 +312,94 @@ class OpenUnmix(nn.Module):
         # normalize every instance in a batch
         x = self.bn1(x)
         x = x.reshape(nb_frames, nb_samples, self.hidden_size)
-        # squash range ot [-1, 1]
+        # squash range to [-1, 1]
         x = torch.tanh(x)
+
+        # Samples x Frames x Hidden Size
+        # x = np.swapaxes(x, 0, 1)
+
+        SOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 2, dtype=torch.float32)
+        EOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 3, dtype=torch.float32)
+        SOS_TOKEN = SOS_TOKEN.to(x.device)
+        EOS_TOKEN = EOS_TOKEN.to(x.device)
+
+        # print("SOS shape:", SOS_TOKEN.size())
+        # print("EOS shape:", EOS_TOKEN.size())
+
+        x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=0)
+
+        # Frames x Samples x Hidden Size
+        # x = np.swapaxes(x, 0, 1)
+
+        x = self.pos_encoder(x)
+
+
+        # Samples * Frames x Hidden Size
+        # x = x.reshape(nb_samples * nb_frames, self.hidden_size)
+
+
+        # print("X shape after first fc layer:", x.size())
+        # x = self.pos_encoder(x)
 
         # apply 3-layers of stacked LSTM
         lstm_out = self.lstm(x)
 
         # print("Target:", tgt.size(), tgt)
 
-        # lstm skip connection
-        x = torch.cat([x, lstm_out[0]], -1)
-        # x = torch.cat([x, transformer_out], -1)
+        # Frames x Samples x Frequency Domain
+        if not predict and not transformer_only:
+            y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
+            y = self.bn_decoder(y)
+            y = y.reshape(y_frames, y_samples, self.hidden_size)
+            # print("X shape:", x.size())
+            # print("Y shape", y.size())
+            y = torch.tanh(y)
+
+            # y = y.reshape(y_frames, y_samples, 512)
+            # y = y.reshape(y_frames * y_samples, 512)
+
+            # # Samples x Frames x Hidden Size
+            # y = np.swapaxes(y, 0, 1)
+
+            SOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 2, dtype=torch.float32)
+            EOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 3, dtype=torch.float32)
+            SOS_TOKEN = SOS_TOKEN.to(y.device)
+            EOS_TOKEN = EOS_TOKEN.to(y.device)
+
+            y = torch.cat((SOS_TOKEN, y, EOS_TOKEN), dim=0)
+
+        # Frames x Samples x Hidden Size
+        # y = np.swapaxes(y, 0, 1)
+        y = self.pos_encoder(y)
+
+        # y = y.reshape(-1, y_channels * self.nb_bins)
+
+        # y_input = y[:, :-1]
+
+        if not transformer_only:
+            y_input = y[:-1, :, :]
+        else:
+            y_input = y
+
+        sequence_length = y_input.size(0)
+        tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
+
+        print(sequence_length, y_input.size(), tgt_mask.size())
+        # print("Y shifted shape", y_input.size())
+
+        # y_size = (y_frames, y_samples, y_input.size(-1))
+        # x_size = (nb_frames, nb_samples, x.size(-1))
+        # y = torch.tanh(y)
+        
+        # print(f"Y shape before encoder: {y.size()} \n {y}\n")
+        # y = self.pos_encoder_1(y)
+        # print(f"Y shape after encoder: {y.size()} \n {y}")
+        # y = y.reshape(-1, y_channels * self.nb_bins)
+        # y = self.fc_decoder(y)
+        # y = self.bn_decoder(y)
+        # y = y.reshape(y_frames, y_samples, self.hidden_size)
+        # y = torch.tanh(y)
+        # y = self.pos_encoder_2(y)
 
         # apply cnn
 
@@ -361,6 +451,183 @@ class OpenUnmix(nn.Module):
         # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
         return x.permute(1, 2, 3, 0)
 
+    # def predict(self, x: Tensor, y: Tensor, tgt_mask: Tensor):
+    #     """
+    #     Args:
+    #         x: input spectrogram of shape
+    #             `(nb_samples, nb_channels, nb_bins, nb_frames)`
+
+    #     Returns:
+    #         Tensor: filtered spectrogram of shape
+    #             `(nb_samples, nb_channels, nb_bins, nb_frames)`
+    #     """
+
+    #     # permute so that batch is last for lstm
+    #     x = x.permute(3, 0, 1, 2)
+    #     # get current spectrogram shape
+
+    #     # samples (batch size), frames (duration of sequence, each frame is a time-bin of the STFT (~20ms for 5s duration, 255 frames), channels * bins is our frequency data
+
+    #     nb_frames, nb_samples, nb_channels, nb_bins = x.data.shape
+    #     # print("X shape:", nb_frames, nb_samples, nb_channels, nb_bins)
+    #     # print("Y shape:", y_frames, y_samples, y_channels, y_bins)
+
+    #     mix = x.detach().clone()
+
+    #     # crop
+    #     x = x[..., : self.nb_bins]
+    #     # shift and scale input to mean=0 std=1 (across all bins)
+    #     x = x + self.input_mean
+    #     x = x * self.input_scale
+
+    #     # to (nb_frames*nb_samples, nb_channels*nb_bins)
+    #     # and encode to (nb_frames*nb_samples, hidden_size)
+
+    #     # print("X shape before first fc layer:", x.size())
+    #     x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
+    #     # normalize every instance in a batch
+    #     x = self.bn1(x)
+    #     x = x.reshape(nb_frames, nb_samples, self.hidden_size)
+    #     # squash range to [-1, 1]
+    #     x = torch.tanh(x)
+
+    #     # Samples x Frames x Hidden Size
+    #     # x = np.swapaxes(x, 0, 1)
+
+    #     SOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 2, dtype=torch.float32)
+    #     EOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 3, dtype=torch.float32)
+    #     SOS_TOKEN = SOS_TOKEN.to(x.device)
+    #     EOS_TOKEN = EOS_TOKEN.to(x.device)
+
+    #     # print("SOS shape:", SOS_TOKEN.size())
+    #     # print("EOS shape:", EOS_TOKEN.size())
+
+    #     x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=0)
+
+    #     # Frames x Samples x Hidden Size
+    #     # x = np.swapaxes(x, 0, 1)
+
+    #     x = self.pos_encoder(x)
+
+    #     # print("X shape after encoder:", x.size())
+    #     # print("Y shape:", y.size())
+    #     # print("Tgt mask shape:", tgt_mask.size())
+    #     transformer_out = self.transformer(x, y, tgt_mask=tgt_mask)
+    #     # print(transformer_out.size())
+
+    #     # lstm skip connection
+    #     # x = torch.cat([x, lstm_out[0]], -1)
+    #     # print("Transformer out:", transformer_out.size())
+    #     # print("X shape:", x.size())
+
+    #     x = x[1:-1, :, :]
+    #     # print("Transformer out:", transformer_out.size())
+    #     # print("X shape:", x.size())
+    #     # transformer_out = transformer_out[1:, :, :]
+    #     x = torch.cat([x, transformer_out], -1)
+
+    #     # first dense stage + batch norm
+    #     x = self.fc2(x.reshape(-1, x.shape[-1]))
+    #     x = self.bn2(x)
+
+    #     x = F.relu(x)
+
+    #     # second dense stage + layer norm
+    #     x = self.fc3(x)
+    #     x = self.bn3(x)
+
+    #     # reshape back to original dim
+    #     x = x.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
+
+    #     # apply output scaling
+    #     x *= self.output_scale
+    #     x += self.output_mean
+
+    #     # since our output is non-negative, we can apply RELU
+    #     x = F.relu(x) * mix
+    #     # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
+    #     return x.permute(1, 2, 3, 0)
+
+    def feed_transformer(self, x: Tensor, y: Tensor, tgt_mask: Tensor):
+        """
+        Args:
+            x: input spectrogram of shape
+                `(nb_samples, nb_channels, nb_bins, nb_frames)`
+
+        Returns:
+            Tensor: filtered spectrogram of shape
+                `(nb_samples, nb_channels, nb_bins, nb_frames)`
+        """
+
+        # permute so that batch is last for lstm
+        x = x.permute(3, 0, 1, 2)
+        # get current spectrogram shape
+
+        # samples (batch size), frames (duration of sequence, each frame is a time-bin of the STFT (~20ms for 5s duration, 255 frames), channels * bins is our frequency data
+
+        nb_frames, nb_samples, nb_channels, nb_bins = x.data.shape
+        # print("X shape:", nb_frames, nb_samples, nb_channels, nb_bins)
+        # print("Y shape:", y_frames, y_samples, y_channels, y_bins)
+
+        mix = x.detach().clone()
+
+        # crop
+        x = x[..., : self.nb_bins]
+        # shift and scale input to mean=0 std=1 (across all bins)
+        x = x + self.input_mean
+        x = x * self.input_scale
+
+        # to (nb_frames*nb_samples, nb_channels*nb_bins)
+        # and encode to (nb_frames*nb_samples, hidden_size)
+
+        # print("X shape before first fc layer:", x.size())
+        x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
+        # normalize every instance in a batch
+        x = self.bn1(x)
+        x = x.reshape(nb_frames, nb_samples, self.hidden_size)
+        # squash range to [-1, 1]
+        x = torch.tanh(x)
+
+        # Samples x Frames x Hidden Size
+        # x = np.swapaxes(x, 0, 1)
+
+        SOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 2, dtype=torch.float32)
+        EOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 3, dtype=torch.float32)
+        SOS_TOKEN = SOS_TOKEN.to(x.device)
+        EOS_TOKEN = EOS_TOKEN.to(x.device)
+
+        # print("SOS shape:", SOS_TOKEN.size())
+        # print("EOS shape:", EOS_TOKEN.size())
+
+        x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=0)
+
+        # Frames x Samples x Hidden Size
+        # x = np.swapaxes(x, 0, 1)
+
+        x = self.pos_encoder(x)
+
+        # print("X shape after encoder:", x.size())
+        # print("Y shape:", y.size())
+        # print("Tgt mask shape:", tgt_mask.size())
+        transformer_out = self.transformer(x, y, tgt_mask=tgt_mask)
+        return transformer_out[-1, :, :]
+
+    def get_tgt_mask(self, size) -> torch.tensor:
+        # Generates a squeare matrix where the each row allows one word more to be seen
+        mask = torch.tril(torch.ones(size, size) == 1) # Lower triangular matrix
+        mask = mask.float()
+        mask = mask.masked_fill(mask == 0, float('-inf')) # Convert zeros to -inf
+        mask = mask.masked_fill(mask == 1, float(0.0)) # Convert ones to 0
+
+        # EX for size=5:
+        # [[0., -inf, -inf, -inf, -inf],
+        #  [0.,   0., -inf, -inf, -inf],
+        #  [0.,   0.,   0., -inf, -inf],
+        #  [0.,   0.,   0.,   0., -inf],
+        #  [0.,   0.,   0.,   0.,   0.]]
+
+        return mask
+    
 
 class Separator(nn.Module):
     """
@@ -457,10 +724,22 @@ class Separator(nn.Module):
 
         # initializing spectrograms variable
         spectrograms = torch.zeros(X.shape + (nb_sources,), dtype=audio.dtype, device=X.device)
+        device = X.device
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
             # apply current model to get the source spectrogram
-            target_spectrogram = target_module(X.detach().clone())
+            y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
+            # print(X.size())
+            for _ in range(X.size(-1)):
+                # tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
+                pred = target_module(X.detach().clone(), y_input, transformer_only=True).to(device)
+                pred = pred.unsqueeze(0)
+                y_input = torch.cat((y_input, pred), dim=0)
+            
+            EOS_TOKEN = torch.full((1, y_input.size(1), y_input.size(2)), 3, dtype=torch.float32).to(device)
+            y_input = torch.cat((y_input, EOS_TOKEN), dim=0)
+            
+            target_spectrogram = target_module(X.detach().clone(), y_input, predict=True)
             spectrograms[..., j] = target_spectrogram
 
         # transposing it as
@@ -532,7 +811,8 @@ class Separator(nn.Module):
         # in the case of residual, we added another source
         if self.residual:
             print(self.residual)
-            estimates_dict["residual"] = estimates[:, -1, ...]
+            # estimates_dict["residual"] = estimates[:, -1, ...]
+            estimates_dict["accompaniment"] = estimates[:, -1, ...]
 
         if aggregate_dict is not None:
             new_estimates = {}

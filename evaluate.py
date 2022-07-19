@@ -103,7 +103,10 @@ def separate_and_evaluate(
     # audio = torch.as_tensor(track.audio, dtype=torch.float32, device=device)
     audio = utils.preprocess(audio, track.rate, separator.sample_rate)
 
-    estimates = separator(audio)
+    with torch.no_grad():
+        audio = audio.to(device)
+        estimates = separator(audio)
+
     estimates = separator.to_dict(estimates, aggregate_dict=aggregate_dict)
 
     for key in estimates:

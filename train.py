@@ -17,6 +17,8 @@ from openunmix import model
 from openunmix import utils
 from openunmix import transforms
 
+import torch.nn.functional as F
+
 tqdm.monitor_interval = 0
 
 
@@ -31,6 +33,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         X = encoder(x)
         Y = encoder(y)
         Y_hat = unmix(X, Y)
+        # print("Predicted Shape Y_hat:", Y_hat.size())
         loss = torch.nn.functional.mse_loss(Y_hat, Y)
         loss.backward()
         optimizer.step()
@@ -43,19 +46,54 @@ def valid(args, unmix, encoder, device, valid_sampler):
     losses = utils.AverageMeter()
     unmix.eval()
     with torch.no_grad():
-        print(dir(valid_sampler))
         print("Dataset:", valid_sampler.dataset)
         print("Batch Size:", valid_sampler.batch_size)
         print("Number of batches:", len(valid_sampler))
+        img_width = 255
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
             X = encoder(x)
             Y = encoder(y)
-            Y_hat = unmix(X, Y)
-            loss = torch.nn.functional.mse_loss(Y_hat, Y)
+            loss = 0
+            hop_length = img_width//2 + 1
+            num_frames = X.size(-1)
+            arr = torch.zeros(X.size()).to(device)
+            # print(arr.shape)
+            # print("Num frames:", num_frames)
+            for i in range(0, num_frames, hop_length):                
+                # print("Indexing from {} to {}".format(i, i+img_width))
+                X_tmp, Y_tmp = X[:, :, :, i:(i + img_width)], Y[:, :, :, i:(i + img_width)]
+                if i + img_width > num_frames:
+                    padding = (0, i + img_width - num_frames)
+                    X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
+                    Y_hat = unmix(X_tmp, Y_tmp)
+                    # print("Only need last {} frames".format(num_frames - i))
+                    # print("Pred shape", Y_hat.shape)
+                    # print("Arr shape", arr.shape)
+                    # print(i, num_frames - i)
+                    # print("Arr end shape", arr[..., i:].shape)
+                    # print("Y-hat end shape", Y_hat[..., :num_frames - i].shape)
+                    arr[..., i:] += Y_hat[..., :num_frames - i]
+                    # loss += torch.nn.functional.mse_loss(Y_hat, Y)
+                    break
+
+                Y_hat = unmix(X_tmp, Y_tmp)
+                arr[..., i:i+img_width] += Y_hat
+                
+                # loss += torch.nn.functional.mse_loss(Y_hat, Y)
+            # print("Last frame", i + hop_length, i + img_width, num_hops)
+
+            # Multiply first window and last extra part of window by 2 to make sure that the entire array is doubled
+            arr[..., :hop_length] *= 2
+            arr[..., i + hop_length:] *= 2
+
+            # Average out window results
+            arr /= 2
+            # loss /= i
+            # Y_hat = unmix(X, Y)
+            loss = torch.nn.functional.mse_loss(arr, Y)
             losses.update(loss.item(), Y.size(1))
         return losses.avg
-
 
 def get_statistics(args, encoder, dataset):
     encoder = copy.deepcopy(encoder).to("cpu")
@@ -255,6 +293,11 @@ def main():
         scaler_mean = None
         scaler_std = None
     else:
+
+        # print("REMEMBER TO UNCOMMENT GET STATISTICS")
+        # scaler_mean = None
+        # scaler_std = None
+
         scaler_mean, scaler_std = get_statistics(args, encoder, train_dataset)
 
     max_bin = utils.bandwidth_to_max_bin(train_dataset.sample_rate, args.nfft, args.bandwidth)
@@ -322,6 +365,8 @@ def main():
     for epoch in t:
         t.set_description("Training epoch")
         end = time.time()
+
+        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
 
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
         valid_loss = valid(args, unmix, encoder, device, valid_sampler)

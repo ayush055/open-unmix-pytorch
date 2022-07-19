@@ -78,3 +78,31 @@ def separate(
     estimates = separator(audio)
     estimates = separator.to_dict(estimates, aggregate_dict=aggregate_dict)
     return estimates
+
+# def get_prediction(unmix, encoder, device, valid_sampler):
+#     losses = utils.AverageMeter()
+#     unmix.eval()
+
+#     y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
+#     with torch.no_grad():
+#         for x, y in valid_sampler:
+#             x, y = x.to(device), y.to(device)
+#             X = encoder(x)
+#             Y = encoder(y)
+#             print("X shape:", X.size())
+#             print("Y shape:", Y.size())
+#             for _ in range(X.size(-1)):
+#                 tgt_mask = unmix.get_tgt_mask(y_input.size(0)).to(device)
+#                 pred = unmix.feed_transformer(X, y_input, tgt_mask)
+#                 pred = pred.unsqueeze(0)
+#                 # print("Pred shape", pred.size())
+
+#                 # Concatenate previous input with predicted best word
+#                 y_input = torch.cat((y_input, pred), dim=0)
+#                 # print(y_input.size())
+
+#             y_hat_mask = unmix.get_tgt_mask(y_input.size(0)).to(device)
+#             y_hat = unmix.predict(X, y_input, y_hat_mask)
+            
+#             loss = torch.nn.functional.mse_loss(y_hat, Y)
+#             losses.update(loss.item(), Y.size(1))
