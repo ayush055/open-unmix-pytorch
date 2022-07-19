@@ -57,7 +57,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
             loss = 0
             hop_length = img_width//2 + 1
             num_frames = X.size(-1)
-            arr = torch.zeros(X.size())
+            arr = torch.zeros(X.size()).to(device)
             print(arr.shape)
             num_hops = 0
             print("Num frames:", num_frames)
