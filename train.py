@@ -63,9 +63,9 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     padding = (0, i + img_width - num_frames)
                     X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
                     print(X_tmp, Y_tmp)
+                    print("Indexing from {} to {}".format(i, i+img_width))
+                    print(X_tmp.shape, Y_tmp.shape, X.size(-1), img_width, hop_length)
                     break
-                print("Indexing from {} to {}".format(i, i+img_width))
-                print(X_tmp.shape, Y_tmp.shape, X.size(-1), img_width, hop_length)
                 # Y_hat = unmix(X_tmp, Y_tmp)
                 # loss += torch.nn.functional.mse_loss(Y_hat, Y)
             loss /= i
