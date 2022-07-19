@@ -64,14 +64,14 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 if i + img_width > num_frames:
                     padding = (0, i + img_width - num_frames)
                     X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
-                    Y_hat = unmix(X_tmp, Y_tmp)
-                    preds.append(Y_hat)
-                    loss += torch.nn.functional.mse_loss(Y_hat, Y)
+                    # Y_hat = unmix(X_tmp, Y_tmp)
+                    # preds.append(Y_hat)
+                    # loss += torch.nn.functional.mse_loss(Y_hat, Y)
                     break
 
-                Y_hat = unmix(X_tmp, Y_tmp)
-                preds.append(Y_hat)
-                loss += torch.nn.functional.mse_loss(Y_hat, Y)
+                # Y_hat = unmix(X_tmp, Y_tmp)
+                # preds.append(Y_hat)
+                # loss += torch.nn.functional.mse_loss(Y_hat, Y)
             loss /= i
             Y_hat = unmix(X, Y)
             loss = torch.nn.functional.mse_loss(Y_hat, Y)
