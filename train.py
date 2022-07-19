@@ -69,12 +69,12 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     padding = (0, i + img_width - num_frames)
                     X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
                     Y_hat = unmix(X_tmp, Y_tmp)
-                    print("Only need last {} frames".format(num_frames - i))
-                    print("Pred shape", Y_hat.shape)
-                    print("Arr shape", arr.shape)
-                    print(i, num_frames - i)
-                    print("Arr end shape", arr[..., i:].shape)
-                    print("Y-hat end shape", Y_hat[..., :num_frames - i].shape)
+                    # print("Only need last {} frames".format(num_frames - i))
+                    # print("Pred shape", Y_hat.shape)
+                    # print("Arr shape", arr.shape)
+                    # print(i, num_frames - i)
+                    # print("Arr end shape", arr[..., i:].shape)
+                    # print("Y-hat end shape", Y_hat[..., :num_frames - i].shape)
                     arr[..., i:] += Y_hat[..., :num_frames - i]
                     # loss += torch.nn.functional.mse_loss(Y_hat, Y)
                     break
