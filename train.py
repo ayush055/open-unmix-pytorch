@@ -70,7 +70,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     # preds.append(Y_hat)
                     # loss += torch.nn.functional.mse_loss(Y_hat, Y)
                     break
-                print(arr)
+            print(arr)
 
                 # Y_hat = unmix(X_tmp, Y_tmp)
                 # preds.append(Y_hat)
