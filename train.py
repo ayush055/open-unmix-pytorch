@@ -67,14 +67,14 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 if i + img_width > num_frames:
                     padding = (0, i + img_width - num_frames)
                     X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
-                    Y_hat = unmix(X_tmp, Y_tmp)
+                    # Y_hat = unmix(X_tmp, Y_tmp)
                     print("Only need last {} frames".format(num_frames - i))
-                    arr[..., i:] += Y_hat[num_frames - i]
+                    # arr[..., i:] += Y_hat[num_frames - i]
                     # loss += torch.nn.functional.mse_loss(Y_hat, Y)
                     break
 
-                Y_hat = unmix(X_tmp, Y_tmp)
-                arr[..., i:i+img_width] += Y_hat
+                # Y_hat = unmix(X_tmp, Y_tmp)
+                # arr[..., i:i+img_width] += Y_hat
                 
                 # loss += torch.nn.functional.mse_loss(Y_hat, Y)
             print("Last frame", i + hop_length, i + img_width, num_hops)
