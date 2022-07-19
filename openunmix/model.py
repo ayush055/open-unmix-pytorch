@@ -90,7 +90,7 @@ class OpenUnmix(nn.Module):
             nhead=4,
             num_encoder_layers=2,
             num_decoder_layers=2,
-            dropout=0.5,
+            dropout=0.1,
             activation='gelu',
         )
         fc2_hiddensize = hidden_size * 2
