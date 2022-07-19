@@ -57,35 +57,34 @@ def valid(args, unmix, encoder, device, valid_sampler):
             loss = 0
             hop_length = img_width//2 + 1
             num_frames = X.size(-1)
-            preds = []
             arr = np.zeros(X.size())
             print(arr.shape)
             num_hops = 0
             for i in range(0, num_frames, hop_length):                
                 num_hops += 1    
                 print("Indexing from {} to {}".format(i, i+img_width))
-                X_tmp, Y_tmp = X[:, :, :, i:(i + img_width) + 1], Y[:, :, :, i:(i + img_width) + 1]
-                arr[i:i+img_width+1] += 1
+                X_tmp, Y_tmp = X[:, :, :, i:(i + img_width)], Y[:, :, :, i:(i + img_width)]
                 if i + img_width > num_frames:
                     padding = (0, i + img_width - num_frames)
                     X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
                     Y_hat = unmix(X_tmp, Y_tmp)
-                    preds.append(Y_hat)
+                    print("Only need last {} frames".format(num_frames - i))
+                    arr[..., i:] += Y_hat[num_frames - i]
                     # loss += torch.nn.functional.mse_loss(Y_hat, Y)
                     break
 
                 Y_hat = unmix(X_tmp, Y_tmp)
-                Y_hat = F.pad(Y_hat, padding=())
-                preds.append(Y_hat)
+                arr[..., i:i+img_width] += Y_hat
+                
                 # loss += torch.nn.functional.mse_loss(Y_hat, Y)
             print("Last frame", i + hop_length, i + img_width, num_hops)
-            preds[0][:hop_length, ...] *= 2
-            preds[-1][hop_length:, ...] *= 2
 
-            for pred in preds:
-                padding = ()
-                pred = F.pad(pred, ())
+            # Multiply first window and last extra part of window by 2 to make sure that the entire array is doubled
+            arr[..., :hop_length] *= 2
+            arr[..., i + hop_length:] *= 2
 
+            # Average out window results
+            arr /= 2
 
             loss /= i
             Y_hat = unmix(X, Y)
