@@ -55,7 +55,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
             X = encoder(x)
             Y = encoder(y)
             loss = 0
-            hop_length = img_width//2
+            hop_length = img_width//2 + 1
             num_frames = X.size(-1)
             preds = []
             for i in range(0, num_frames, hop_length):                    
