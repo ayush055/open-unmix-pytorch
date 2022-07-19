@@ -58,7 +58,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
             hop_length = img_width//2 + 1
             num_frames = X.size(-1)
             preds = []
-            arr = np.array(num_frames)
+            arr = np.zeros(num_frames)
             for i in range(0, num_frames, hop_length):                    
                 print("Indexing from {} to {}".format(i, i+img_width))
                 X_tmp, Y_tmp = X[:, :, :, i:(i + img_width) + 1], Y[:, :, :, i:(i + img_width) + 1]
