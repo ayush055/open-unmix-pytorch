@@ -58,7 +58,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
             hop_length = img_width//2 + 1
             num_frames = X.size(-1)
             preds = []
-            arr = np.zeros(num_frames)
+            arr = np.zeros(X.size())
+            print(arr.shape)
             num_hops = 0
             for i in range(0, num_frames, hop_length):                
                 num_hops += 1    
@@ -74,12 +75,16 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     break
 
                 Y_hat = unmix(X_tmp, Y_tmp)
+                Y_hat = F.pad(Y_hat, padding=())
                 preds.append(Y_hat)
                 # loss += torch.nn.functional.mse_loss(Y_hat, Y)
             print("Last frame", i + hop_length, i + img_width, num_hops)
             preds[0][:hop_length, ...] *= 2
             preds[-1][hop_length:, ...] *= 2
 
+            for pred in preds:
+                padding = ()
+                pred = F.pad(pred, ())
 
 
             loss /= i
