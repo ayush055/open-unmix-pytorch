@@ -58,12 +58,12 @@ def valid(args, unmix, encoder, device, valid_sampler):
             hop_length = img_width//2 + 1
             num_frames = X.size(-1)
             arr = torch.zeros(X.size()).to(device)
-            print(arr.shape)
+            # print(arr.shape)
             num_hops = 0
-            print("Num frames:", num_frames)
+            # print("Num frames:", num_frames)
             for i in range(0, num_frames, hop_length):                
                 num_hops += 1    
-                print("Indexing from {} to {}".format(i, i+img_width))
+                # print("Indexing from {} to {}".format(i, i+img_width))
                 X_tmp, Y_tmp = X[:, :, :, i:(i + img_width)], Y[:, :, :, i:(i + img_width)]
                 if i + img_width > num_frames:
                     padding = (0, i + img_width - num_frames)
@@ -91,9 +91,9 @@ def valid(args, unmix, encoder, device, valid_sampler):
 
             # Average out window results
             arr /= 2
-            loss /= i
-            Y_hat = unmix(X, Y)
-            loss = torch.nn.functional.mse_loss(Y_hat, Y)
+            # loss /= i
+            # Y_hat = unmix(X, Y)
+            loss = torch.nn.functional.mse_loss(arr, Y)
             losses.update(loss.item(), Y.size(1))
         return losses.avg
 
@@ -368,7 +368,7 @@ def main():
         t.set_description("Training epoch")
         end = time.time()
 
-        valid_loss = valid(args, unmix, encoder, device, valid_sampler)
+        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
 
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
         valid_loss = valid(args, unmix, encoder, device, valid_sampler)
