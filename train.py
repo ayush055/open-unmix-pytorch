@@ -51,8 +51,13 @@ def valid(args, unmix, encoder, device, valid_sampler):
             x, y = x.to(device), y.to(device)
             X = encoder(x)
             Y = encoder(y)
-            Y_hat = unmix(X, Y)
-            loss = torch.nn.functional.mse_loss(Y_hat, Y)
+            loss = 0
+            hop_length = img_width//2
+            for i in range(0, len(X), hop_length):
+                X_tmp, Y_tmp = X[:, i:(i + img_width), :]
+                Y_hat = unmix(X, Y)
+                loss += torch.nn.functional.mse_loss(Y_hat, Y)
+            loss /= i
             losses.update(loss.item(), Y.size(1))
         return losses.avg
 
