@@ -188,7 +188,7 @@ class OpenUnmix(nn.Module):
 
         x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=0)
 
-        x = nn.Dropout(0.5)(x)
+        # x = nn.Dropout(0.5)(x)
 
         # Frames x Samples x Hidden Size
         # x = np.swapaxes(x, 0, 1)
@@ -292,14 +292,14 @@ class OpenUnmix(nn.Module):
             return transformer_out[-1, :, :]
         
         x = torch.cat([x, transformer_out], -1)
-        x = nn.Dropout(0.5)(x)
+        # x = nn.Dropout(0.5)(x)
 
         # first dense stage + batch norm
         x = self.fc2(x.reshape(-1, x.shape[-1]))
         x = self.bn2(x)
 
         x = F.relu(x)
-        x = nn.Dropout(0.5)(x)
+        # x = nn.Dropout(0.5)(x)
 
         # second dense stage + layer norm
         x = self.fc3(x)
@@ -313,7 +313,7 @@ class OpenUnmix(nn.Module):
         x += self.output_mean
 
         # since our output is non-negative, we can apply RELU
-        x = F.relu(x) * mix
+        # x = F.relu(x) * mix
         # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
         return x.permute(1, 2, 3, 0)
 
