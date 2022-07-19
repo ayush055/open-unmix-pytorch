@@ -47,11 +47,21 @@ def valid(args, unmix, encoder, device, valid_sampler):
         print("Dataset:", valid_sampler.dataset)
         print("Batch Size:", valid_sampler.batch_size)
         print("Number of batches:", len(valid_sampler))
+        img_width = 255
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
             X = encoder(x)
             Y = encoder(y)
+            print(X.shape, Y.shape)
+            return
             Y_hat = unmix(X, Y)
+            loss = 0
+            hop_length = img_width//4
+            for i in range(0, len(X), hop_length):
+                X_tmp, Y_tmp = X[:, i:(i + img_width), :]
+                Y_hat = unmix(X, Y)
+                loss += torch.nn.functional.mse_loss(Y_hat, Y)
+            loss /= i
             loss = torch.nn.functional.mse_loss(Y_hat, Y)
             losses.update(loss.item(), Y.size(1))
         return losses.avg
@@ -327,7 +337,7 @@ def main():
         t.set_description("Training epoch")
         end = time.time()
 
-        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
+        valid_loss = valid(args, unmix, encoder, device, valid_sampler)
 
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
         valid_loss = valid(args, unmix, encoder, device, valid_sampler)
