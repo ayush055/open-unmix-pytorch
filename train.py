@@ -57,7 +57,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
             for i in range(0, X.size(-1), hop_length):
                 X_tmp, Y_tmp = X[:, :, :, i:(i + img_width)], Y[:, :, :, i:(i + img_width)]
                 print("Indexing from {} to {}".format(i, i+img_width))
-                print(X_tmp.shape, Y_tmp.shape)
+                print(X_tmp.shape, Y_tmp.shape, X.size(-1), hop_length)
                 # Y_hat = unmix(X_tmp, Y_tmp)
                 # loss += torch.nn.functional.mse_loss(Y_hat, Y)
             loss /= i
