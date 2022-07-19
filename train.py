@@ -71,6 +71,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     Y_hat = unmix(X_tmp, Y_tmp)
                     print("Only need last {} frames".format(num_frames - i))
                     print("Pred shape", Y_hat.shape)
+                    print("Arr shape", arr.shape)
+                    print(i, num_frames - i)
                     arr[..., i:] += Y_hat[..., num_frames - i]
                     # loss += torch.nn.functional.mse_loss(Y_hat, Y)
                     break
