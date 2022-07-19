@@ -17,6 +17,8 @@ from openunmix import model
 from openunmix import utils
 from openunmix import transforms
 
+import torch.nn.functional as F
+
 tqdm.monitor_interval = 0
 
 
@@ -54,8 +56,12 @@ def valid(args, unmix, encoder, device, valid_sampler):
             Y = encoder(y)
             loss = 0
             hop_length = img_width//4
-            for i in range(0, X.size(-1), hop_length):
+            num_frames = X.size(-1)
+            for i in range(0, num_frames, hop_length):                    
                 X_tmp, Y_tmp = X[:, :, :, i:(i + img_width)], Y[:, :, :, i:(i + img_width)]
+                if i + img_width > num_frames:
+                    padding = (0, i + img_width - num_frames)
+                    X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
                 print("Indexing from {} to {}".format(i, i+img_width))
                 print(X_tmp.shape, Y_tmp.shape, X.size(-1), img_width, hop_length)
                 # Y_hat = unmix(X_tmp, Y_tmp)
