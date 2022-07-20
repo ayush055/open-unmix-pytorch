@@ -258,13 +258,42 @@ class Separator(nn.Module):
         # (nb_samples, nb_channels, nb_bins, nb_frames, 2)
         mix_stft = self.stft(audio)
         X = self.complexnorm(mix_stft)
+        device = X.device
 
         # initializing spectrograms variable
         spectrograms = torch.zeros(X.shape + (nb_sources,), dtype=audio.dtype, device=X.device)
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
-            # apply current model to get the source spectrogram
-            target_spectrogram = target_module(X.detach().clone())
+            img_width = 255
+            hop_length = img_width//2 + 1
+            num_frames = X.size(-1)
+            arr = torch.zeros(X.size()).to(device)
+
+            for i in range(0, num_frames, hop_length):                
+                # print("Indexing from {} to {}".format(i, i+img_width))
+                X_tmp = X[:, :, :, i:(i + img_width)]
+                if i + img_width > num_frames:
+                    padding = (0, i + img_width - num_frames)
+                    X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
+                    Y_hat = target_module(X_tmp.detach().clone())
+                    arr[..., i:] += Y_hat[..., :num_frames - i]
+                    break
+
+                Y_hat = target_module(X_tmp.detach().clone())
+                arr[..., i:i+img_width] += Y_hat
+                
+                # loss += torch.nn.functional.mse_loss(Y_hat, Y)
+            # print("Last frame", i + hop_length, i + img_width, num_hops)
+
+            # Multiply first window and last extra part of window by 2 to make sure that the entire array is doubled
+            arr[..., :hop_length] *= 2
+            arr[..., i + hop_length:] *= 2
+
+            # Average out window results
+            arr /= 2
+
+            target_spectrogram = arr #target_module(X.detach().clone(), y_input, predict=True)
+                            
             spectrograms[..., j] = target_spectrogram
 
         # transposing it as
