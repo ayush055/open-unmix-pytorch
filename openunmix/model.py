@@ -10,17 +10,12 @@ from torch import Tensor
 from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, Transformer
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
-<<<<<<< HEAD
 from torch.autograd import Variable
 from torchvision import models
 from torchvision import transforms
 from torch.nn.utils.rnn import pack_padded_sequence
 
 # from .transformer import CustomTransformerDecoder, PositionalEncoding
-=======
-from .transformer import PositionalEncoding
-from openunmix import transformer
->>>>>>> transformer-window
 
 class OpenUnmix(nn.Module):
     """OpenUnmix Core spectrogram based separation module.
@@ -118,9 +113,10 @@ class OpenUnmix(nn.Module):
         self.conv15 = torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1)
         self.conv16 = torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1)
         self.maxpool6 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1)
+        self.conv17 = torch.nn.Conv2d(512, 255, kernel_size=3, stride=1, padding=1)
         
-        self.fc_cnn = Linear(in_features=512*8*8, out_features=self.nb_output_bins * nb_channels, bias=False)
-        self.bn_cnn = BatchNorm1d(self.nb_output_bins * nb_channels)
+        self.fc_cnn = Linear(in_features=8*8, out_features=512, bias=False)
+        self.bn_cnn = BatchNorm1d(512)
         
         # change the 576 if conv layer parameters are changed.
         # self.fc1 = torch.nn.Linear(576, 512)
@@ -140,21 +136,21 @@ class OpenUnmix(nn.Module):
         # maybe comment this out idk
         self.bn1 = BatchNorm1d(hidden_size)
 
-        self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.5)
+        # self.pos_encoder = PositionalEncoding(hidden_size, dropout=0.5)
 
         if unidirectional:
             lstm_hidden_size = hidden_size
         else:
             lstm_hidden_size = hidden_size // 2
 
-        # self.lstm = LSTM(
-        #     input_size=hidden_size,
-        #     hidden_size=lstm_hidden_size,
-        #     num_layers=nb_layers,
-        #     bidirectional=not unidirectional,
-        #     batch_first=False,
-        #     dropout=0.4 if nb_layers > 1 else 0,
-        # )
+        self.lstm = LSTM(
+            input_size=hidden_size,
+            hidden_size=lstm_hidden_size,
+            num_layers=nb_layers,
+            bidirectional=not unidirectional,
+            batch_first=False,
+            dropout=0.4 if nb_layers > 1 else 0,
+        )
 
         # self.lstm2 = LSTM(
         #     input_size=46*8,
@@ -180,7 +176,7 @@ class OpenUnmix(nn.Module):
             dropout=0.5,
             activation='gelu',
         )
-        fc2_hiddensize = hidden_size * 2
+        fc2_hiddensize = hidden_size * 3
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
         self.bn2 = BatchNorm1d(hidden_size)
 
@@ -192,13 +188,13 @@ class OpenUnmix(nn.Module):
 
         self.bn3 = BatchNorm1d(self.nb_output_bins * nb_channels)
 
-        self.fc4 = Linear(
-            in_features=1472 + 4080,
-            out_features=self.nb_output_bins * nb_channels,
-            bias=False,
-        )
+        # self.fc4 = Linear(
+        #     in_features=1472 + 4080,
+        #     out_features=self.nb_output_bins * nb_channels,
+        #     bias=False,
+        # )
 
-        self.bn4 = BatchNorm1d(self.nb_output_bins * nb_channels)
+        # self.bn4 = BatchNorm1d(self.nb_output_bins * nb_channels)
 
         if input_mean is not None:
             input_mean = torch.from_numpy(-input_mean[: self.nb_bins]).float()
@@ -278,6 +274,7 @@ class OpenUnmix(nn.Module):
         # x_img = F.relu(self.conv15(x_img))
         # x_img = F.relu(self.conv16(x_img))
         # x_img = self.maxpool6(x_img)
+        x_img = F.relu(self.conv17(x_img))
         print("x_img shape:", x_img.shape)
         
         """ simple cnn model
@@ -318,20 +315,20 @@ class OpenUnmix(nn.Module):
         # Samples x Frames x Hidden Size
         # x = np.swapaxes(x, 0, 1)
 
-        SOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 2, dtype=torch.float32)
-        EOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 3, dtype=torch.float32)
-        SOS_TOKEN = SOS_TOKEN.to(x.device)
-        EOS_TOKEN = EOS_TOKEN.to(x.device)
+        # SOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 2, dtype=torch.float32)
+        # EOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 3, dtype=torch.float32)
+        # SOS_TOKEN = SOS_TOKEN.to(x.device)
+        # EOS_TOKEN = EOS_TOKEN.to(x.device)
 
-        # print("SOS shape:", SOS_TOKEN.size())
-        # print("EOS shape:", EOS_TOKEN.size())
+        # # print("SOS shape:", SOS_TOKEN.size())
+        # # print("EOS shape:", EOS_TOKEN.size())
 
-        x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=0)
+        # x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=0)
 
-        # Frames x Samples x Hidden Size
-        # x = np.swapaxes(x, 0, 1)
+        # # Frames x Samples x Hidden Size
+        # # x = np.swapaxes(x, 0, 1)
 
-        x = self.pos_encoder(x)
+        # x = self.pos_encoder(x)
 
 
         # Samples * Frames x Hidden Size
@@ -347,44 +344,44 @@ class OpenUnmix(nn.Module):
         # print("Target:", tgt.size(), tgt)
 
         # Frames x Samples x Frequency Domain
-        if not predict and not transformer_only:
-            y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
-            y = self.bn_decoder(y)
-            y = y.reshape(y_frames, y_samples, self.hidden_size)
-            # print("X shape:", x.size())
-            # print("Y shape", y.size())
-            y = torch.tanh(y)
+        # if not predict and not transformer_only:
+        #     y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
+        #     y = self.bn_decoder(y)
+        #     y = y.reshape(y_frames, y_samples, self.hidden_size)
+        #     # print("X shape:", x.size())
+        #     # print("Y shape", y.size())
+        #     y = torch.tanh(y)
 
-            # y = y.reshape(y_frames, y_samples, 512)
-            # y = y.reshape(y_frames * y_samples, 512)
+        #     # y = y.reshape(y_frames, y_samples, 512)
+        #     # y = y.reshape(y_frames * y_samples, 512)
 
-            # # Samples x Frames x Hidden Size
-            # y = np.swapaxes(y, 0, 1)
+        #     # # Samples x Frames x Hidden Size
+        #     # y = np.swapaxes(y, 0, 1)
 
-            SOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 2, dtype=torch.float32)
-            EOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 3, dtype=torch.float32)
-            SOS_TOKEN = SOS_TOKEN.to(y.device)
-            EOS_TOKEN = EOS_TOKEN.to(y.device)
+        #     SOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 2, dtype=torch.float32)
+        #     EOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 3, dtype=torch.float32)
+        #     SOS_TOKEN = SOS_TOKEN.to(y.device)
+        #     EOS_TOKEN = EOS_TOKEN.to(y.device)
 
-            y = torch.cat((SOS_TOKEN, y, EOS_TOKEN), dim=0)
+        #     y = torch.cat((SOS_TOKEN, y, EOS_TOKEN), dim=0)
 
-        # Frames x Samples x Hidden Size
-        # y = np.swapaxes(y, 0, 1)
-        y = self.pos_encoder(y)
+        # # Frames x Samples x Hidden Size
+        # # y = np.swapaxes(y, 0, 1)
+        # y = self.pos_encoder(y)
 
         # y = y.reshape(-1, y_channels * self.nb_bins)
 
         # y_input = y[:, :-1]
 
-        if not transformer_only:
-            y_input = y[:-1, :, :]
-        else:
-            y_input = y
+        # if not transformer_only:
+        #     y_input = y[:-1, :, :]
+        # else:
+        #     y_input = y
 
-        sequence_length = y_input.size(0)
-        tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
+        # sequence_length = y_input.size(0)
+        # tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
 
-        print(sequence_length, y_input.size(), tgt_mask.size())
+        # print(sequence_length, y_input.size(), tgt_mask.size())
         # print("Y shifted shape", y_input.size())
 
         # y_size = (y_frames, y_samples, y_input.size(-1))
@@ -405,13 +402,18 @@ class OpenUnmix(nn.Module):
 
         # print(x_img.shape)
         # print("x_img input shape:", x_img.reshape(-1, x_img.shape[1]).shape)
-
-        x_img = self.fc_cnn(x_img.reshape(-1, x_img.shape[1]))
+        print("x_img shape before fc_cnn", x_img.shape)
+        x_img = x_img.reshape(-1, x_img.shape[-1] * x_img.shape[-2])
+        print("x_img shape after reshape", x_img.shape)
+        x_img = self.fc_cnn(x_img)
         x_img = self.bn_cnn(x_img)
         x_img = F.relu(x_img)
-        print(x_img.shape)
+        print("x_img shape after fc_cnn", x_img.shape)
+        x_img = x_img.reshape(lstm_out[0].shape[0], lstm_out[0].shape[1], -1)
+        print("x_img shape after reshape", x_img.shape)
 
         # print("x_img shape after fc layer", x_img.shape)
+        x = torch.cat([x, lstm_out[0], x_img], -1)
 
         # print('shape of x after flatten: ', x.shape)
         x = self.fc2(x.reshape(-1, x.shape[-1]))
@@ -430,12 +432,12 @@ class OpenUnmix(nn.Module):
 
         print(x.shape)
 
-        x = torch.cat([x, x_img], 0)
+        # x = torch.cat([x, x_img], 0)
 
         print(x.shape)
 
-        x = self.fc4(x)
-        x = self.bn4(x)
+        # x = self.fc4(x)
+        # x = self.bn4(x)
 
         # print(x.shape)
 
