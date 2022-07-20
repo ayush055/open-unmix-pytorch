@@ -597,46 +597,41 @@ class Separator(nn.Module):
             num_frames = X.size(-1)
             arr = torch.zeros(X.size()).to(device)
 
-            if decoder_dir:
-                track_path = os.path.join(decoder_dir, track.name)
-                track_path = os.path.join(track_path, target_name + ".wav")
-                # print("Track path:", track_path)
-                sig, rate = torchaudio.load(track_path)
-                sig = torch.as_tensor(sig, dtype=torch.float32, device=device)
-                sig = utils.preprocess(sig, track.rate, self.sample_rate)
-                sig = self.stft(sig)
-                sig = self.complexnorm(sig)
-                sig = sig.to(device)
+            track_path = os.path.join(decoder_dir, track.name)
+            track_path = os.path.join(track_path, target_name + ".wav")
+            # print("Track path:", track_path)
+            sig, rate = torchaudio.load(track_path)
+            sig = torch.as_tensor(sig, dtype=torch.float32, device=device)
+            sig = utils.preprocess(sig, track.rate, self.sample_rate)
+            sig = self.stft(sig)
+            sig = self.complexnorm(sig)
+            sig = sig.to(device)
 
-                for i in range(0, num_frames, hop_length):                
-                    # print("Indexing from {} to {}".format(i, i+img_width))
-                    X_tmp, Y_tmp = X[:, :, :, i:(i + img_width)], sig[:, :, :, i:(i + img_width)]
-                    if i + img_width > num_frames:
-                        padding = (0, i + img_width - num_frames)
-                        X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
-                        Y_hat = target_module(X_tmp, Y_tmp, predict=True)
-                        arr[..., i:] += Y_hat[..., :num_frames - i]
-                        break
+            for i in range(0, num_frames, hop_length):                
+                # print("Indexing from {} to {}".format(i, i+img_width))
+                X_tmp, Y_tmp = X[:, :, :, i:(i + img_width)], sig[:, :, :, i:(i + img_width)]
+                if i + img_width > num_frames:
+                    padding = (0, i + img_width - num_frames)
+                    X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
+                    Y_hat = target_module(X_tmp, Y_tmp, predict=True)
+                    arr[..., i:] += Y_hat[..., :num_frames - i]
+                    break
 
-                    Y_hat = target_module(X_tmp.detach().clone(), Y_tmp.detach().clone(), predict=True)
-                    arr[..., i:i+img_width] += Y_hat
-                    
-                    # loss += torch.nn.functional.mse_loss(Y_hat, Y)
-                # print("Last frame", i + hop_length, i + img_width, num_hops)
-
-                # Multiply first window and last extra part of window by 2 to make sure that the entire array is doubled
-                arr[..., :hop_length] *= 2
-                arr[..., i + hop_length:] *= 2
-
-                # Average out window results
-                arr /= 2
-
-                target_spectrogram = arr #target_module(X.detach().clone(), y_input, predict=True)
-            
-            else:
-                # implement logic to do autoregression
-                target_spectrogram = target_module(X.detach().clone())
+                Y_hat = target_module(X_tmp.detach().clone(), Y_tmp.detach().clone(), predict=True)
+                arr[..., i:i+img_width] += Y_hat
                 
+                # loss += torch.nn.functional.mse_loss(Y_hat, Y)
+            # print("Last frame", i + hop_length, i + img_width, num_hops)
+
+            # Multiply first window and last extra part of window by 2 to make sure that the entire array is doubled
+            arr[..., :hop_length] *= 2
+            arr[..., i + hop_length:] *= 2
+
+            # Average out window results
+            arr /= 2
+
+            target_spectrogram = arr #target_module(X.detach().clone(), y_input, predict=True)
+                            
             spectrograms[..., j] = target_spectrogram
             # loss /= i
             # Y_hat = unmix(X, Y)
