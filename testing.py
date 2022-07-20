@@ -12,7 +12,7 @@ vocals_sdr_df = sdr_df.loc[sdr_df.index.get_level_values('target') == "vocals"]
 vocals_sdr_df = vocals_sdr_df.sort_values(by="track", ascending=False).droplevel(["method", "target", "metric"])
 vocals_sdr_df = vocals_sdr_df.reset_index()
 # print(vocals_sdr_df)
-vocals_sdr_df = vocals_sdr_df.drop(columns=["track"])
+# vocals_sdr_df = vocals_sdr_df.drop(columns=["track"])
 print(vocals_sdr_df)
 vocals_sdr_df = vocals_sdr_df.rename(columns={"score": "baseline"})
 # vocals_sdr_df.plot()
@@ -27,12 +27,21 @@ vocals_sdr_df_transformer = sdr_df_transformer.loc[sdr_df_transformer.index.get_
 vocals_sdr_df_transformer = vocals_sdr_df_transformer.sort_values(by="track", ascending=False).droplevel(["method", "target", "metric"])
 vocals_sdr_df_transformer = vocals_sdr_df_transformer.reset_index()
 # print(vocals_sdr_df)
-vocals_sdr_df_transformer = vocals_sdr_df_transformer.drop(columns=["track"])
+# vocals_sdr_df_transformer = vocals_sdr_df_transformer.drop(columns=["track"])
 vocals_sdr_df_transformer = vocals_sdr_df_transformer.rename(columns={"score": "transformer"})
 print(vocals_sdr_df_transformer)
 # vocals_sdr_df_transformer.plot()
 
-vocals_sdr_scores = pd.concat([vocals_sdr_df, vocals_sdr_df_transformer], axis=1)
+vocals_sdr_scores = pd.concat([vocals_sdr_df, vocals_sdr_df_transformer["transformer"]], axis=1)
 vocals_sdr_scores.plot()
 
+
+genre_df = pd.read_csv("tracklist.csv")[["Track Name", "Genre"]]
+vocals_sdr_scores["genre"] = vocals_sdr_scores.apply(lambda x: genre_df[x["track"] == genre_df["Track Name"]]["Genre"].values[0], axis=1)
+print(genre_df)
+print(vocals_sdr_scores)
+
+vocals_sdr_scores.plot.bar()
+
+vocals_sdr_scores.groupby("genre").mean().plot.bar(rot=0)
 plt.show()
