@@ -1,16 +1,74 @@
 import argparse
 import functools
 import json
-import multiprocessing
+# import multiprocessing
 from typing import Optional, Union
 
 import musdb
 import museval
 import torch
+from torch.multiprocessing import Pool, Process, set_start_method
 import tqdm
+import os
+
+import torchaudio
 
 from openunmix import utils
 
+def load_info(path: str) -> dict:
+    """Load audio metadata
+
+    this is a backend_independent wrapper around torchaudio.info
+
+    Args:
+        path: Path of filename
+    Returns:
+        Dict: Metadata with
+        `samplerate`, `samples` and `duration` in seconds
+
+    """
+    # get length of file in samples
+    if torchaudio.get_audio_backend() == "sox":
+        raise RuntimeError("Deprecated backend is not supported")
+
+    info = {}
+    si = torchaudio.info(str(path))
+    info["samplerate"] = si.sample_rate
+    info["samples"] = si.num_frames
+    info["channels"] = si.num_channels
+    info["duration"] = info["samples"] / info["samplerate"]
+    return info
+
+def load_audio(
+    path: str,
+    start: float = 0.0,
+    dur: Optional[float] = None,
+    info: Optional[dict] = None,
+):
+    """Load audio file
+
+    Args:
+        path: Path of audio file
+        start: start position in seconds, defaults on the beginning.
+        dur: end position in seconds, defaults to `None` (full file).
+        info: metadata object as called from `load_info`.
+
+    Returns:
+        Tensor: torch tensor waveform of shape `(num_channels, num_samples)`
+    """
+    # loads the full track duration
+    if dur is None:
+        # we ignore the case where start!=0 and dur=None
+        # since we have to deal with fixed length audio
+        sig, rate = torchaudio.load(path)
+        return sig, rate
+    else:
+        if info is None:
+            info = load_info(path)
+        num_frames = int(dur * info["samplerate"])
+        frame_offset = int(start * info["samplerate"])
+        sig, rate = torchaudio.load(path, num_frames=num_frames, frame_offset=frame_offset)
+        return sig, rate
 
 def separate_and_evaluate(
     track: musdb.MultiTrack,
@@ -25,6 +83,7 @@ def separate_and_evaluate(
     device: Union[str, torch.device] = "cpu",
     wiener_win_len: Optional[int] = None,
     filterbank="torch",
+    decoder_dir=None,
 ) -> str:
 
     separator = utils.load_separator(
@@ -40,14 +99,15 @@ def separate_and_evaluate(
 
     separator.freeze()
     separator.to(device)
+    separator.eval()
 
-    audio = torch.as_tensor(track.audio, dtype=torch.float32, device=device)
+    audio, _ = load_audio(track.path)
+    audio = torch.as_tensor(audio, dtype=torch.float32, device=device)
+    # audio = torch.as_tensor(track.audio, dtype=torch.float32, device=device)
     audio = utils.preprocess(audio, track.rate, separator.sample_rate)
+    print("Audio shape", audio.shape)
 
-    with torch.no_grad():
-        audio = audio.to(device)
-        estimates = separator(audio)
-
+    estimates = separator(audio, decoder_dir, track)
     estimates = separator.to_dict(estimates, aggregate_dict=aggregate_dict)
 
     for key in estimates:
@@ -57,7 +117,6 @@ def separate_and_evaluate(
 
     scores = museval.eval_mus_track(track, estimates, output_dir=eval_dir)
     return scores
-
 
 if __name__ == "__main__":
     # Training settings
@@ -77,6 +136,12 @@ if __name__ == "__main__":
         default="umxl",
         type=str,
         help="path to mode base directory of pretrained models",
+    )
+
+    parser.add_argument(
+        "--decoder-dir",
+        type=str,
+        help="path to directory where decoder inputs are stored",
     )
 
     parser.add_argument(
@@ -142,6 +207,8 @@ if __name__ == "__main__":
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
+    print(device)
+
     mus = musdb.DB(
         root=args.root,
         download=args.root is None,
@@ -151,7 +218,15 @@ if __name__ == "__main__":
     aggregate_dict = None if args.aggregate is None else json.loads(args.aggregate)
 
     if args.cores > 1:
-        pool = multiprocessing.Pool(args.cores)
+        # pool = multiprocessing.Pool(args.cores)
+
+        try:
+            set_start_method('spawn')
+        except RuntimeError:
+            pass
+
+        pool = Pool(args.cores)
+
         results = museval.EvalStore()
         scores_list = list(
             pool.imap_unordered(
@@ -166,6 +241,7 @@ if __name__ == "__main__":
                     output_dir=args.outdir,
                     eval_dir=args.evaldir,
                     device=device,
+                    decoder_dir=args.decoder_dir,
                 ),
                 iterable=mus.tracks,
                 chunksize=1,
@@ -190,6 +266,7 @@ if __name__ == "__main__":
                 output_dir=args.outdir,
                 eval_dir=args.evaldir,
                 device=device,
+                decoder_dir=args.decoder_dir,
             )
             print(track, "\n", scores)
             results.add_track(scores)

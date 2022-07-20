@@ -10,6 +10,9 @@ from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 from .transformer import PositionalEncoding
 from openunmix import transformer
+import os
+import torchaudio
+from openunmix import utils
 
 class OpenUnmix(nn.Module):
     """OpenUnmix Core spectrogram based separation module.
@@ -128,7 +131,6 @@ class OpenUnmix(nn.Module):
         Args:
             x: input spectrogram of shape
                 `(nb_samples, nb_channels, nb_bins, nb_frames)`
-
         Returns:
             Tensor: filtered spectrogram of shape
                 `(nb_samples, nb_channels, nb_bins, nb_frames)`
@@ -152,13 +154,12 @@ class OpenUnmix(nn.Module):
         x = x + self.input_mean
         x = x * self.input_scale
 
-        if not predict and not transformer_only:
+        if not transformer_only:
             y = y.permute(3, 0, 1, 2)
             y_frames, y_samples, y_channels, y_bins = y.data.shape
             y = y[..., : self.nb_bins]
             y = y + self.input_mean
-            y = y * self.input_scale        
-
+            y = y * self.input_scale
 
         # to (nb_frames*nb_samples, nb_channels*nb_bins)
         # and encode to (nb_frames*nb_samples, hidden_size)
@@ -184,6 +185,8 @@ class OpenUnmix(nn.Module):
 
         x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=0)
 
+        # x = nn.Dropout(0.5)(x)
+
         # Frames x Samples x Hidden Size
         # x = np.swapaxes(x, 0, 1)
 
@@ -203,7 +206,15 @@ class OpenUnmix(nn.Module):
         # print("Y shape before fc layer:", y.size())
 
         # Frames x Samples x Frequency Domain
-        if not predict and not transformer_only:
+        if not transformer_only:
+            # if not predict:
+            #     if torch.rand(1) > 0.25:
+            #         noise = torch.randn(y.size()).to(self.device)
+            #         print("Adding noise to y tensor")
+            #         # add noise to y
+            #         y += noise
+            if not predict:
+                y = self.y_dropout(y)
             y = self.fc_decoder(y.reshape(-1, y_channels * self.nb_bins))
             y = self.bn_decoder(y)
             y = y.reshape(y_frames, y_samples, self.hidden_size)
@@ -240,7 +251,7 @@ class OpenUnmix(nn.Module):
         sequence_length = y_input.size(0)
         tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
 
-        print(sequence_length, y_input.size(), tgt_mask.size())
+        # print(sequence_length, y_input.size(), tgt_mask.size())
         # print("Y shifted shape", y_input.size())
 
         # y_size = (y_frames, y_samples, y_input.size(-1))
@@ -262,7 +273,7 @@ class OpenUnmix(nn.Module):
         # print("Y shape transformed:", y.shape)
         # tgt = torch.zeros(nb_frames, nb_samples, self.hidden_size).cuda()
         transformer_out = self.transformer(x, y_input, tgt_mask=tgt_mask)
-        print("Transformer out shape", transformer_out.size())
+        # print("Transformer out shape", transformer_out.size())
         # print(transformer_out.size())
 
         # lstm skip connection
@@ -270,21 +281,23 @@ class OpenUnmix(nn.Module):
         # print("Transformer out:", transformer_only.size())
         # print("X shape:", x.size())
 
-        print("Transformer only", transformer_only)
+        # print("Transformer only", transformer_only)
         if not transformer_only:
             x = x[1:-1, :, :]
             transformer_out = transformer_out[1:, :, :]
         else:
-            print("Transformer out shape", transformer_out.size())
+            # print("Transformer out shape", transformer_out.size())
             return transformer_out[-1, :, :]
         
         x = torch.cat([x, transformer_out], -1)
+        # x = nn.Dropout(0.5)(x)
 
         # first dense stage + batch norm
         x = self.fc2(x.reshape(-1, x.shape[-1]))
         x = self.bn2(x)
 
         x = F.relu(x)
+        # x = nn.Dropout(0.5)(x)
 
         # second dense stage + layer norm
         x = self.fc3(x)
@@ -301,6 +314,7 @@ class OpenUnmix(nn.Module):
         x = F.relu(x) * mix
         # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
         return x.permute(1, 2, 3, 0)
+
 
     # def predict(self, x: Tensor, y: Tensor, tgt_mask: Tensor):
     #     """
@@ -553,7 +567,7 @@ class Separator(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, audio: Tensor) -> Tensor:
+    def forward(self, audio: Tensor, decoder_dir=None, track=None) -> Tensor:
         """Performing the separation on audio input
 
         Args:
@@ -576,22 +590,72 @@ class Separator(nn.Module):
         # initializing spectrograms variable
         spectrograms = torch.zeros(X.shape + (nb_sources,), dtype=audio.dtype, device=X.device)
         device = X.device
-
+        
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
-            # apply current model to get the source spectrogram
-            y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
-            # print(X.size())
-            for _ in range(X.size(-1)):
-                # tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
-                pred = target_module(X.detach().clone(), y_input, transformer_only=True).to(device)
-                pred = pred.unsqueeze(0)
-                y_input = torch.cat((y_input, pred), dim=0)
+            img_width = 255
+            hop_length = img_width//2 + 1
+            num_frames = X.size(-1)
+            arr = torch.zeros(X.size()).to(device)
+
+            if decoder_dir:
+                track_path = os.path.join(decoder_dir, track.name)
+                track_path = os.path.join(track_path, target_name + ".wav")
+                # print("Track path:", track_path)
+                sig, rate = torchaudio.load(track_path)
+                sig = torch.as_tensor(sig, dtype=torch.float32, device=device)
+                sig = utils.preprocess(sig, track.rate, self.sample_rate)
+                sig = self.stft(sig)
+                sig = self.complexnorm(sig)
+                sig = sig.to(device)
+
+                for i in range(0, num_frames, hop_length):                
+                    # print("Indexing from {} to {}".format(i, i+img_width))
+                    X_tmp, Y_tmp = X[:, :, :, i:(i + img_width)], sig[:, :, :, i:(i + img_width)]
+                    if i + img_width > num_frames:
+                        padding = (0, i + img_width - num_frames)
+                        X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
+                        Y_hat = target_module(X_tmp, Y_tmp, predict=True)
+                        arr[..., i:] += Y_hat[..., :num_frames - i]
+                        break
+
+                    Y_hat = target_module(X_tmp.detach().clone(), Y_tmp.detach().clone(), predict=True)
+                    arr[..., i:i+img_width] += Y_hat
+                    
+                    # loss += torch.nn.functional.mse_loss(Y_hat, Y)
+                # print("Last frame", i + hop_length, i + img_width, num_hops)
+
+                # Multiply first window and last extra part of window by 2 to make sure that the entire array is doubled
+                arr[..., :hop_length] *= 2
+                arr[..., i + hop_length:] *= 2
+
+                # Average out window results
+                arr /= 2
+
+                target_spectrogram = arr #target_module(X.detach().clone(), y_input, predict=True)
             
-            EOS_TOKEN = torch.full((1, y_input.size(1), y_input.size(2)), 3, dtype=torch.float32).to(device)
-            y_input = torch.cat((y_input, EOS_TOKEN), dim=0)
-            
-            target_spectrogram = target_module(X.detach().clone(), y_input, predict=True)
+            else:
+                # implement logic to do autoregression
+                pass
             spectrograms[..., j] = target_spectrogram
+            # loss /= i
+            # Y_hat = unmix(X, Y)
+            # loss = torch.nn.functional.mse_loss(arr, Y)
+            # losses.update(loss.item(), Y.size(1))
+            
+            # # apply current model to get the source spectrogram
+            # y_input = torch.full((1, 1, 512), 2, dtype=torch.float32).to(device)
+            # # print(X.size())
+            # for _ in range(X.size(-1)):
+            #     # tgt_mask = target_module.get_tgt_mask(y_input.size(0)).to(device)
+            #     pred = target_module(X.detach().clone(), y_input, transformer_only=True).to(device)
+            #     pred = pred.unsqueeze(0)
+            #     y_input = torch.cat((y_input, pred), dim=0)
+            
+            # EOS_TOKEN = torch.full((1, y_input.size(1), y_input.size(2)), 3, dtype=torch.float32).to(device)
+            # y_input = torch.cat((y_input, EOS_TOKEN), dim=0)
+            
+            # target_spectrogram = target_module(X.detach().clone(), y_input, predict=True)
+            # spectrograms[..., j] = target_spectrogram
 
         # transposing it as
         # (nb_samples, nb_frames, nb_bins,{1,nb_channels}, nb_sources)
