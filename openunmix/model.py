@@ -274,7 +274,7 @@ class Separator(nn.Module):
                 X_tmp = X[:, :, :, i:(i + img_width)]
                 if i + img_width > num_frames:
                     padding = (0, i + img_width - num_frames)
-                    X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
+                    X_tmp = F.pad(X_tmp, padding, mode='constant', value=0)
                     Y_hat = target_module(X_tmp.detach().clone())
                     arr[..., i:] += Y_hat[..., :num_frames - i]
                     break
