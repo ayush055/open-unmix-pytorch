@@ -635,7 +635,8 @@ class Separator(nn.Module):
             
             else:
                 # implement logic to do autoregression
-                pass
+                target_spectrogram = target_module(X.detach().clone())
+                
             spectrograms[..., j] = target_spectrogram
             # loss /= i
             # Y_hat = unmix(X, Y)
