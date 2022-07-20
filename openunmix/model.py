@@ -415,6 +415,7 @@ class OpenUnmix(nn.Module):
         # print("x_img input shape:", x_img.reshape(-1, x_img.shape[1]).shape)
         print("x_img shape before fc_cnn", x_img.shape)
         x_img = x_img.reshape(-1, x_img.shape[-1] * x_img.shape[-2])
+        x_img = nn.Dropout(0.25)(x_img)
         print("x_img shape after reshape", x_img.shape)
         x_img = self.fc_cnn(x_img)
         x_img = self.bn_cnn(x_img)
