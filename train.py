@@ -66,6 +66,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 if i + img_width > num_frames:
                     padding = (0, i + img_width - num_frames)
                     X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
+                    print("X tmp shape:", X_tmp.shape, "Y tmp shape:", Y_tmp.shape)
                     Y_hat = unmix(X_tmp, Y_tmp)
                     # print("Only need last {} frames".format(num_frames - i))
                     # print("Pred shape", Y_hat.shape)
@@ -77,6 +78,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     loss += torch.nn.functional.mse_loss(Y_hat, Y)
                     break
 
+                print("X_tmp shape", X_tmp.shape, "Y_tmp shape", Y_tmp.shape)
                 Y_hat = unmix(X_tmp, Y_tmp)
                 arr[..., i:i+img_width] += Y_hat
                 

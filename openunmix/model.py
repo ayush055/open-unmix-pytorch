@@ -414,10 +414,13 @@ class OpenUnmix(nn.Module):
 
         # print("x_img shape after fc layer", x_img.shape)
         x = torch.cat([x, lstm_out[0], x_img], -1)
+        print("x shape after concat", x.shape)
 
         # print('shape of x after flatten: ', x.shape)
         x = self.fc2(x.reshape(-1, x.shape[-1]))
         x = self.bn2(x)
+
+        # print('shape of x after fc2: ', x.shape)
 
         x = F.relu(x)
 
@@ -430,12 +433,9 @@ class OpenUnmix(nn.Module):
         x = self.fc3(x)
         x = self.bn3(x)
 
-        print(x.shape)
-
         # x = torch.cat([x, x_img], 0)
 
-        print(x.shape)
-
+        print('shape of x after fc3: ', x.shape)
         # x = self.fc4(x)
         # x = self.bn4(x)
 
@@ -443,6 +443,8 @@ class OpenUnmix(nn.Module):
 
         # reshape back to original dim
         x = x.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
+
+        print("x shape after final reshape", x.shape)
 
         # apply output scaling
         x *= self.output_scale
