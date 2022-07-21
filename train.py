@@ -59,12 +59,12 @@ def valid(args, unmix, encoder, device, valid_sampler):
             # print("Num frames:", num_frames)
             for i in range(0, num_frames, hop_length):                
                 # print("Indexing from {} to {}".format(i, i+img_width))
-                X_tmp, Y_tmp = X[:, :, :, i:(i + img_width)], Y[:, :, :, i:(i + img_width)]
+                X_tmp = X[:, :, :, i:(i + img_width)]
                 if i + img_width > num_frames:
                     padding = (0, i + img_width - num_frames)
-                    X_tmp, Y_tmp = F.pad(X_tmp, padding, mode='constant', value=0), F.pad(Y_tmp, padding, mode='constant', value=0)
-                    print("X tmp shape:", X_tmp.shape, "Y tmp shape:", Y_tmp.shape)
-                    Y_hat = unmix(X_tmp, Y_tmp)
+                    X_tmp = F.pad(X_tmp, padding, mode='constant', value=0)
+                    print("X tmp shape:", X_tmp.shape)
+                    Y_hat = unmix(X_tmp, predict=True)
                     # print("Only need last {} frames".format(num_frames - i))
                     # print("Pred shape", Y_hat.shape)
                     # print("Arr shape", arr.shape)
@@ -75,8 +75,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     # loss += torch.nn.functional.mse_loss(Y_hat, Y)
                     break
 
-                print("X_tmp shape", X_tmp.shape, "Y_tmp shape", Y_tmp.shape)
-                Y_hat = unmix(X_tmp, Y_tmp)
+                print("X_tmp shape", X_tmp.shape)
+                Y_hat = unmix(X_tmp)
                 arr[..., i:i+img_width] += Y_hat
                 
                 # loss += torch.nn.functional.mse_loss(Y_hat, Y)
