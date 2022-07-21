@@ -229,7 +229,7 @@ class OpenUnmix(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, x: Tensor, y: Tensor, transformer_only=False, predict=False) -> Tensor:
+    def forward(self, x: Tensor, y=None, transformer_only=False, predict=False) -> Tensor:
         """
         Args:
             x: input spectrogram of shape
