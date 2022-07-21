@@ -11,6 +11,7 @@ from git import Repo
 import os
 import copy
 import torchaudio
+import torch.nn.functional as F
 
 from openunmix import data
 from openunmix import model
@@ -65,14 +66,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     X_tmp = F.pad(X_tmp, padding, mode='constant', value=0)
                     print("X tmp shape:", X_tmp.shape)
                     Y_hat = unmix(X_tmp, predict=True)
-                    # print("Only need last {} frames".format(num_frames - i))
-                    # print("Pred shape", Y_hat.shape)
-                    # print("Arr shape", arr.shape)
-                    # print(i, num_frames - i)
-                    # print("Arr end shape", arr[..., i:].shape)
-                    # print("Y-hat end shape", Y_hat[..., :num_frames - i].shape)
                     arr[..., i:] += Y_hat[..., :num_frames - i]
-                    # loss += torch.nn.functional.mse_loss(Y_hat, Y)
                     break
 
                 print("X_tmp shape", X_tmp.shape)
