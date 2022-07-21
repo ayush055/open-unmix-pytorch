@@ -125,7 +125,7 @@ class OpenUnmix(nn.Module):
         self.maxpool6 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1)
         self.conv17 = torch.nn.Conv2d(512, 255, kernel_size=3, stride=1, padding=1)
         
-        self.fc_cnn = Linear(in_features=8*8, out_features=512, bias=False)
+        self.fc_cnn = Linear(in_features=23*4, out_features=512, bias=False)
         self.bn_cnn = BatchNorm1d(512)
         
         # change the 576 if conv layer parameters are changed.
@@ -259,7 +259,6 @@ class OpenUnmix(nn.Module):
         x = x * self.input_scale
         
         x_img = x.permute(1, 2, 3, 0)
-        x_img = F.interpolate(x_img, size=(1024, 1024))
         
         # print(x_img.shape)
         x_img = F.relu(self.conv1(x_img))
@@ -283,13 +282,13 @@ class OpenUnmix(nn.Module):
         x_img = F.relu(self.conv11(x_img))
         x_img = F.relu(self.conv12(x_img))
         x_img = F.relu(self.conv13(x_img))
-        x_img = self.batchnorm5(x_img)
-        x_img = self.maxpool5(x_img)
+        # x_img = self.maxpool5(x_img)
         # x_img = F.relu(self.conv14(x_img))
         # x_img = F.relu(self.conv15(x_img))
         # x_img = F.relu(self.conv16(x_img))
         # x_img = self.maxpool6(x_img)
         x_img = F.relu(self.conv17(x_img))
+        x_img = self.batchnorm5(x_img)
         print("x_img shape:", x_img.shape)
         
         """ simple cnn model
