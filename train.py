@@ -30,9 +30,12 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         optimizer.zero_grad()
         X = encoder(x)
         Y = encoder(y)
-        Y_hat = unmix(X, Y)
+        Y_input = Y[...,:-1]
+        Y_expected = Y[...,1:]
+        Y_hat = unmix(X, Y_input)
+        # print("Shape Y:", Y.size())
         # print("Predicted Shape Y_hat:", Y_hat.size())
-        loss = torch.nn.functional.mse_loss(Y_hat, Y)
+        loss = torch.nn.functional.mse_loss(Y_hat[...,:-1], Y_expected)
         loss.backward()
         optimizer.step()
         losses.update(loss.item(), Y.size(1))
@@ -51,10 +54,12 @@ def valid(args, unmix, encoder, device, valid_sampler):
             x, y = x.to(device), y.to(device)
             X = encoder(x)
             Y = encoder(y)
+            Y_input = Y[...,:-1]
+            Y_expected = Y[...,1:]
             print("X: ", X.size())
-            print("Y: ", Y.size())
-            Y_hat = unmix(X, Y, predict=True)
-            loss = torch.nn.functional.mse_loss(Y_hat, Y)
+            print("Y: ", Y_input.size())
+            Y_hat = unmix(X, Y_input)
+            loss = torch.nn.functional.mse_loss(Y_hat[...,:-1], Y_expected)
             losses.update(loss.item(), Y.size(1))
         return losses.avg
 
