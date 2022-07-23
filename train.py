@@ -64,7 +64,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 if i + img_width > num_frames:
                     padding = (0, i + img_width - num_frames)
                     X_tmp = F.pad(X_tmp, padding, mode='constant', value=0)
-                    print("X tmp shape:", X_tmp.shape)
+                    # print("X tmp shape:", X_tmp.shape)
                     Y_hat = unmix(X_tmp)
                     arr[..., i:] += Y_hat[..., :num_frames - i]
                     break
