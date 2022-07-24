@@ -84,18 +84,17 @@ class OpenUnmix(nn.Module):
         # self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
         # self.bn_decoder = BatchNorm1d(hidden_size)
 
-        self.y_dropout = nn.Dropout(0.5)
+        # self.y_dropout = nn.Dropout(0.5)
 
-        self.transformer = Transformer(
-            d_model=self.nb_bins * nb_channels,
-            nhead=3,
-            num_encoder_layers=4,
-            num_decoder_layers=4,
-            dropout=0.1,
-            activation='gelu',
-        )
+        # self.transformer = Transformer(
+        #     d_model=self.nb_bins * nb_channels,
+        #     nhead=3,
+        #     num_encoder_layers=4,
+        #     num_decoder_layers=4,
+        #     dropout=0.1,
+        #     activation='relu',
+        # )
 
-        self.input_size = self.nb_bins * nb_channels
         self.dim_val = 512
         self.out_seq_len = 255
         self.max_seq_len=257
@@ -110,18 +109,18 @@ class OpenUnmix(nn.Module):
 
 
         self.encoder_input_layer = nn.Linear(
-            in_features=self.input_size, 
+            in_features=self.nb_bins * nb_channels, 
             out_features=self.dim_val 
             )
 
         self.decoder_input_layer = nn.Linear(
-            in_features=self.input_size, 
+            in_features=self.nb_bins * nb_channels, 
             out_features=self.dim_val 
             )  
 
         self.linear_mapping = nn.Linear(
             in_features=self.dim_val,
-            out_features=self.nb_bins * nb_channels
+            out_features=self.nb_output_bins * nb_channels
             )
 
         # Create positional encoder
@@ -318,8 +317,8 @@ class OpenUnmix(nn.Module):
         # EOS_TOKEN = EOS_TOKEN.to(y.device)
 
         if train:
-            y = torch.cat((SOS_TOKEN, y), dim=0)
-            y = y[:-1, ...]
+            # y = torch.cat((SOS_TOKEN, y), dim=0)
+            # y = y[:-1, ...]
             sequence_length = y.size(0)
             tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
         else:
