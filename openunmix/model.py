@@ -247,7 +247,7 @@ class OpenUnmix(nn.Module):
             sequence_length = y_input.size(0)
             tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
             transformer_out = self.transformer(x, y_input, tgt_mask=tgt_mask)[:-1, ...]
-            print(x.shape, y_input.shape, transformer_out.shape)
+            # print(x.shape, y_input.shape, transformer_out.shape)
         else:
             sequence_length = y.size(0)
             tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
@@ -710,16 +710,16 @@ class Separator(nn.Module):
 
     def predict(self, X, model):
         y_input = torch.full((X.size(0), X.size(1), X.size(2), 1), -1, dtype=torch.float32).to(X.device)
-        print(X.size(), y_input.size())
+        # print(X.size(), y_input.size())
 
         for _ in range(X.size(-1)):
             pred = model(X.detach().clone(), y_input, train=False)[..., -1].unsqueeze(-1).to(X.device)
-            print(y_input.size(), pred.size())
+            # print(y_input.size(), pred.size())
             y_input = torch.cat((y_input, pred), dim=-1)
 
         y_hat = y_input[..., 1:]
-        print("Final Y_hat size", y_hat.size())
-        print("Final X size", X.size())
+        # print("Final Y_hat size", y_hat.size())
+        # print("Final X size", X.size())
         y_hat = F.relu(y_hat) * X
 
         return y_hat
