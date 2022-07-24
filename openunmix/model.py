@@ -226,12 +226,13 @@ class OpenUnmix(nn.Module):
             # # Samples x Frames x Hidden Size
             # y = np.swapaxes(y, 0, 1)
 
-        SOS_TOKEN = torch.full((1, y.size(1), y.size(2)), -1, dtype=torch.float32)
-        EOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 0, dtype=torch.float32)
-        SOS_TOKEN = SOS_TOKEN.to(y.device)
-        EOS_TOKEN = EOS_TOKEN.to(y.device)
+        if train:
+            SOS_TOKEN = torch.full((1, y.size(1), y.size(2)), -1, dtype=torch.float32)
+            EOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 0, dtype=torch.float32)
+            SOS_TOKEN = SOS_TOKEN.to(y.device)
+            EOS_TOKEN = EOS_TOKEN.to(y.device)
 
-        y = torch.cat((SOS_TOKEN, y, EOS_TOKEN), dim=0)
+            y = torch.cat((SOS_TOKEN, y, EOS_TOKEN), dim=0)
 
         # Frames x Samples x Hidden Size
         # y = np.swapaxes(y, 0, 1)
@@ -303,6 +304,9 @@ class OpenUnmix(nn.Module):
         # apply output scaling
         x *= self.output_scale
         x += self.output_mean
+
+        if not train:
+            return x.permute(1, 2, 3, 0)
 
         # since our output is non-negative, we can apply RELU
         x = F.relu(x) * mix
@@ -613,11 +617,11 @@ class Separator(nn.Module):
                 if i + img_width > num_frames:
                     padding = (0, i + img_width - num_frames)
                     X_tmp = F.pad(X_tmp, padding, mode='constant', value=0)
-                    Y_hat = self.predict(X_tmp, target_module)[1:]
+                    Y_hat = self.predict(X_tmp, target_module)
                     arr[..., i:] += Y_hat[..., :num_frames - i]
                     break
 
-                Y_hat = self.predict(X_tmp, target_module)[1:]
+                Y_hat = self.predict(X_tmp, target_module)
                 arr[..., i:i+img_width] += Y_hat
                 
                 # loss += torch.nn.functional.mse_loss(Y_hat, Y)
@@ -631,7 +635,7 @@ class Separator(nn.Module):
             arr /= 2
 
             target_spectrogram = arr #target_module(X.detach().clone(), y_input, predict=True)
-                            
+
             spectrograms[..., j] = target_spectrogram
             # loss /= i
             # Y_hat = unmix(X, Y)
@@ -711,7 +715,10 @@ class Separator(nn.Module):
             pred = model(X.detach().clone(), y_input, train=False).to(X.device)
             y_input = torch.cat((y_input, pred), dim=0)
 
-        return y_input
+        y_hat = y_input[1:, ...]
+        y_hat = F.relu(y_hat) * X
+
+        return y_hat
 
     def forward2(self, audio: Tensor, decoder_dir=None, track=None) -> Tensor:
         """Performing the separation on audio input
