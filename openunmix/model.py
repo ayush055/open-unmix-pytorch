@@ -717,7 +717,7 @@ class Separator(nn.Module):
             print(y_input.size(), pred.size())
             y_input = torch.cat((y_input, pred), dim=-1)
 
-        y_hat = y_input[1:, ...]
+        y_hat = y_input[..., 1:]
         print("Final Y_hat size", y_hat.size())
         print("Final X size", X.size())
         y_hat = F.relu(y_hat) * X
