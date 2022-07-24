@@ -333,9 +333,6 @@ class OpenUnmix(nn.Module):
 
         x_img = x.clone().permute(1, 2, 0).reshape(nb_samples, 1, self.hidden_size, nb_frames)
         x_img = F.pad(x_img, (0, 512 - nb_frames, 0, 512-self.hidden_size))
-        print(x_img.shape)
-        print(x_img.shape)
-        x_img = self.unet(x_img)
 
         # Samples x Frames x Hidden Size
         # x = np.swapaxes(x, 0, 1)
@@ -365,6 +362,7 @@ class OpenUnmix(nn.Module):
 
         # apply 3-layers of stacked LSTM
         lstm_out = self.lstm(x)
+        x_img = self.unet(x_img)
 
         # print("Target:", tgt.size(), tgt)
 
