@@ -88,9 +88,9 @@ class OpenUnmix(nn.Module):
 
         self.transformer = Transformer(
             d_model=self.nb_bins * nb_channels,
-            nhead=6,
-            num_encoder_layers=2,
-            num_decoder_layers=2,
+            nhead=3,
+            num_encoder_layers=4,
+            num_decoder_layers=4,
             dropout=0.1,
             activation='gelu',
         )
@@ -704,6 +704,7 @@ class Separator(nn.Module):
         return estimates
 
     def predict(self, X, model):
+        print(X.shape)
         y_input = torch.full((1, X.size(1), X.size(2)), -1, dtype=torch.float32).to(X.device)
 
         for _ in range(X.size(-1)):
