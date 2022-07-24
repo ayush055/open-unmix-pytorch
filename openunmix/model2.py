@@ -97,15 +97,15 @@ class OpenUnmix(nn.Module):
 
         self.dim_val = 512
         self.out_seq_len = 255
-        self.max_seq_len=257
+        self.max_seq_len=255
         self.n_heads=8
         self.dim_feedforward_encoder=2048
         self.dim_feedforward_decoder=2048
         self.dropout_encoder=0.1
         self.dropout_decoder=0.1
         self.dropout_pos_enc = 0.1
-        self.n_encoder_layers = 4
-        self.n_decoder_layers = 4
+        self.n_encoder_layers = 8
+        self.n_decoder_layers = 8
 
 
         self.encoder_input_layer = nn.Linear(
