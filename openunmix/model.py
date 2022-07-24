@@ -248,9 +248,9 @@ class OpenUnmix(nn.Module):
             transformer_out = self.transformer(x, y_input, tgt_mask=tgt_mask)[:-1, ...]
             print(x.shape, y_input.shape, transformer_out.shape)
         else:
-            sequence_length = y_input.size(0)
+            sequence_length = y.size(0)
             tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
-            transformer_out = self.transformer(x, y_input, tgt_mask=tgt_mask)
+            transformer_out = self.transformer(x, y, tgt_mask=tgt_mask)
 
         # print(sequence_length, y_input.size(), tgt_mask.size())
         # print("Y shifted shape", y_input.size())
