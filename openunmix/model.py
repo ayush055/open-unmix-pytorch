@@ -251,7 +251,6 @@ class OpenUnmix(nn.Module):
         else:
             sequence_length = y.size(0)
             tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
-            print(x.shape, y.shape)
             transformer_out = self.transformer(x, y, tgt_mask=tgt_mask)
 
         # print(sequence_length, y_input.size(), tgt_mask.size())
@@ -715,6 +714,7 @@ class Separator(nn.Module):
 
         for _ in range(X.size(-1)):
             pred = model(X.detach().clone(), y_input, train=False).to(X.device)
+            print(y_input.size(), pred.size())
             y_input = torch.cat((y_input, pred), dim=0)
 
         y_hat = y_input[1:, ...]
