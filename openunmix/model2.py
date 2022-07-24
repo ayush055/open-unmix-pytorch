@@ -88,9 +88,9 @@ class OpenUnmix(nn.Module):
 
         self.transformer = Transformer(
             d_model=self.nb_bins * nb_channels,
-            nhead=3,
-            num_encoder_layers=4,
-            num_decoder_layers=4,
+            nhead=6,
+            num_encoder_layers=2,
+            num_decoder_layers=2,
             dropout=0.1,
             activation='gelu',
         )
@@ -596,16 +596,15 @@ class Separator(nn.Module):
             num_frames = X.size(-1)
             arr = torch.zeros(X.size()).to(device)
 
-            if decoder_dir:
-                track_path = os.path.join(decoder_dir, track.name)
-                track_path = os.path.join(track_path, target_name + ".wav")
-                # print("Track path:", track_path)
-                sig, rate = torchaudio.load(track_path)
-                sig = torch.as_tensor(sig, dtype=torch.float32, device=device)
-                sig = utils.preprocess(sig, track.rate, self.sample_rate)
-                sig = self.stft(sig)
-                sig = self.complexnorm(sig)
-                sig = sig.to(device)
+            track_path = os.path.join(decoder_dir, track.name)
+            track_path = os.path.join(track_path, target_name + ".wav")
+            # print("Track path:", track_path)
+            sig, rate = torchaudio.load(track_path)
+            sig = torch.as_tensor(sig, dtype=torch.float32, device=device)
+            sig = utils.preprocess(sig, track.rate, self.sample_rate)
+            sig = self.stft(sig)
+            sig = self.complexnorm(sig)
+            sig = sig.to(device)
 
             for i in range(0, num_frames, hop_length):
                 # print("Indexing from {} to {}".format(i, i+img_width))
