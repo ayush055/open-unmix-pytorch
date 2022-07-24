@@ -83,12 +83,15 @@ class OpenUnmix(nn.Module):
         # self.pos_encoder_2 = PositionalEncoding(hidden_size, dropout=0.5)
         # self.fc_decoder = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
         # self.bn_decoder = BatchNorm1d(hidden_size)
+
+        self.y_dropout = nn.Dropout(0.5)
+
         self.transformer = Transformer(
             d_model=self.nb_bins * nb_channels,
             nhead=6,
-            num_encoder_layers=2,
-            num_decoder_layers=2,
-            dropout=0.5,
+            num_encoder_layers=4,
+            num_decoder_layers=4,
+            dropout=0.1,
             activation='gelu',
         )
         fc2_hiddensize = hidden_size * 2
@@ -196,7 +199,7 @@ class OpenUnmix(nn.Module):
 
 
         # print("X shape after first fc layer:", x.size())
-        # x = self.pos_encoder(x)
+        x = self.pos_encoder(x)
 
         # apply 3-layers of stacked LSTM
         # lstm_out = self.lstm(x)
@@ -232,7 +235,7 @@ class OpenUnmix(nn.Module):
 
         # Frames x Samples x Hidden Size
         # y = np.swapaxes(y, 0, 1)
-        # y = self.pos_encoder(y)
+        y = self.pos_encoder(y)
 
         # y = y.reshape(-1, y_channels * self.nb_bins)
 
