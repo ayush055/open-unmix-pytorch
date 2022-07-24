@@ -88,7 +88,7 @@ class OpenUnmix(nn.Module):
 
         self.transformer = Transformer(
             d_model=self.nb_bins * nb_channels,
-            nhead=6,
+            nhead=3,
             num_encoder_layers=4,
             num_decoder_layers=4,
             dropout=0.1,
