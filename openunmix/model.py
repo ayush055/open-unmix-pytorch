@@ -251,6 +251,7 @@ class OpenUnmix(nn.Module):
         else:
             sequence_length = y.size(0)
             tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
+            print(x.shape, y.shape)
             transformer_out = self.transformer(x, y, tgt_mask=tgt_mask)
 
         # print(sequence_length, y_input.size(), tgt_mask.size())
