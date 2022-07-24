@@ -172,7 +172,7 @@ class OpenUnmix(nn.Module):
             norm=None
             )
 
-        fc2_hiddensize = hidden_size * 2
+        fc2_hiddensize = hidden_size# * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
         self.bn2 = BatchNorm1d(hidden_size)
 
@@ -366,8 +366,8 @@ class OpenUnmix(nn.Module):
         # x = self.linear_mapping(x)
         # print("X shape after linear mapping", x.shape)
 
-        x_hidden = x_hidden.reshape(-1, nb_samples, self.dim_val)
-        x = torch.cat([x, x_hidden], -1)
+        # x_hidden = x_hidden.reshape(-1, nb_samples, self.dim_val)
+        # x = torch.cat([x, x_hidden], -1)
         x = self.fc2(x.reshape(-1, x.shape[-1]))
         x = self.bn2(x)
 
