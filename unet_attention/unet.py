@@ -213,6 +213,8 @@ class XUnet(nn.Module):
 
         skip_dims = []
 
+        print(in_out)
+
         for ind, (dim_in, dim_out) in enumerate(in_out):
             is_last = ind >= (num_resolutions - 1)
             skip_dims.append(dim_in)

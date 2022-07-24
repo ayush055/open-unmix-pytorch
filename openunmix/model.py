@@ -95,7 +95,7 @@ class OpenUnmix(nn.Module):
 
         """
 
-        self.unet = XUnet(16, channels=1)
+        self.unet = XUnet(64, channels=1)
 
         
         # self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
@@ -202,6 +202,9 @@ class OpenUnmix(nn.Module):
         )
 
         self.bn3 = BatchNorm1d(self.nb_output_bins * nb_channels)
+
+        self.image_compress = nn.Linear(self.hidden_size, self.hidden_size//2)
+        self.image_decompress = nn.Linear(self.hidden_size//2, self.hidden_size)
 
         # self.fc4 = Linear(
         #     in_features=1472 + 4080,
@@ -331,9 +334,15 @@ class OpenUnmix(nn.Module):
         # squash range to [-1, 1]
         x = torch.tanh(x)
 
-        x_img = x.clone().permute(1, 2, 0).reshape(nb_samples, 1, self.hidden_size, nb_frames)
-        x_img = F.pad(x_img, (0, 512 - nb_frames, 0, 512-self.hidden_size))
-
+        x_img = x.clone().permute(1, 2, 0)
+        # x_img = F.pad(x_img, (0, 512 - nb_frames, 0, 512-self.hidden_size))
+        x_img = self.image_compress(x_img.reshape(-1, self.hidden_size))
+        x_img = x_img.reshape(nb_frames, nb_samples, self.hidden_size//2)
+        # transform = T.Resize((256, 256))
+        # x_img = transform(x_img).reshape(nb_samples, 1, self.hidden_size//2, 256)
+        x_img = F.pad(x_img, (0, 0, 0, 0, 0, 1))
+        print(x_img.shape)
+        x_img = x_img.reshape(nb_samples, 1, self.hidden_size//2, 256)
         # Samples x Frames x Hidden Size
         # x = np.swapaxes(x, 0, 1)
 
@@ -364,9 +373,12 @@ class OpenUnmix(nn.Module):
         lstm_out = self.lstm(x)
         x_img = self.unet(x_img).squeeze(1)
         # x_img = x_img.squeeze(1)[:, :nb_frames, :]
-        transform = T.Resize((255, 512))
-        x_img = transform(x_img)
-        x_img = x_img.permute(1, 0, 2)
+        x_img = x_img[:, :nb_frames, :]
+        # transform = T.Resize((255, 256))
+        print(x_img.shape)
+        # x_img = transform(x_img)
+        x_img = self.image_decompress(x_img.reshape(-1, self.hidden_size//2))
+        x_img = x_img.reshape(nb_frames, nb_samples, self.hidden_size)
 
         # print("Target:", tgt.size(), tgt)
 
