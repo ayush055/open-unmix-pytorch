@@ -174,8 +174,8 @@ class OpenUnmix(nn.Module):
         # Samples x Frames x Hidden Size
         # x = np.swapaxes(x, 0, 1)
 
-        SOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 2, dtype=torch.float32)
-        EOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 3, dtype=torch.float32)
+        SOS_TOKEN = torch.full((1, x.size(1), x.size(2)), -1, dtype=torch.float32)
+        EOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 0, dtype=torch.float32)
         SOS_TOKEN = SOS_TOKEN.to(x.device)
         EOS_TOKEN = EOS_TOKEN.to(x.device)
 
@@ -189,7 +189,7 @@ class OpenUnmix(nn.Module):
         # Frames x Samples x Hidden Size
         # x = np.swapaxes(x, 0, 1)
 
-        x = self.pos_encoder(x)
+        # x = self.pos_encoder(x)
 
         # Samples * Frames x Hidden Size
         # x = x.reshape(nb_samples * nb_frames, self.hidden_size)
@@ -223,8 +223,8 @@ class OpenUnmix(nn.Module):
             # # Samples x Frames x Hidden Size
             # y = np.swapaxes(y, 0, 1)
 
-        SOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 2, dtype=torch.float32)
-        EOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 3, dtype=torch.float32)
+        SOS_TOKEN = torch.full((1, y.size(1), y.size(2)), -1, dtype=torch.float32)
+        EOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 0, dtype=torch.float32)
         SOS_TOKEN = SOS_TOKEN.to(y.device)
         EOS_TOKEN = EOS_TOKEN.to(y.device)
 
@@ -232,7 +232,7 @@ class OpenUnmix(nn.Module):
 
         # Frames x Samples x Hidden Size
         # y = np.swapaxes(y, 0, 1)
-        y = self.pos_encoder(y)
+        # y = self.pos_encoder(y)
 
         # y = y.reshape(-1, y_channels * self.nb_bins)
 
@@ -701,7 +701,7 @@ class Separator(nn.Module):
         return estimates
 
     def predict(self, X, model):
-        y_input = torch.full((1, X.size(1), X.size(2)), 2, dtype=torch.float32).to(X.device)
+        y_input = torch.full((1, X.size(1), X.size(2)), -1, dtype=torch.float32).to(X.device)
 
         for _ in range(X.size(-1)):
             pred = model(X.detach().clone(), y_input, train=False).to(X.device)
