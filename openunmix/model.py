@@ -366,6 +366,7 @@ class OpenUnmix(nn.Module):
         # x_img = x_img.squeeze(1)[:, :nb_frames, :]
         transform = T.Resize((255, 512))
         x_img = transform(x_img)
+        x_img = x_img.permute(1, 0, 2)
 
         # print("Target:", tgt.size(), tgt)
 
