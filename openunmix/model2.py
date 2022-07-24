@@ -101,8 +101,8 @@ class OpenUnmix(nn.Module):
         self.n_heads=8
         self.dim_feedforward_encoder=2048
         self.dim_feedforward_decoder=2048
-        self.dropout_encoder=0.1
-        self.dropout_decoder=0.1
+        self.dropout_encoder=0.5
+        self.dropout_decoder=0.5
         self.dropout_pos_enc = 0.1
         self.n_encoder_layers = 8
         self.n_decoder_layers = 8
@@ -172,9 +172,10 @@ class OpenUnmix(nn.Module):
             norm=None
             )
 
-        fc2_hiddensize = hidden_size# * 2
+        fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
         self.bn2 = BatchNorm1d(hidden_size)
+        self.dropout_cat = nn.Dropout(0.2)
 
         self.fc3 = Linear(
             in_features=hidden_size,
@@ -334,8 +335,8 @@ class OpenUnmix(nn.Module):
         # EOS_TOKEN = EOS_TOKEN.to(y.device)
 
         if train:
-            # y = torch.cat((SOS_TOKEN, y), dim=0)
-            # y = y[:-1, ...]
+            y = torch.cat((SOS_TOKEN, y), dim=0)
+            y = y[:-1, ...]
             sequence_length = y.size(0)
             tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
         else:
@@ -354,7 +355,7 @@ class OpenUnmix(nn.Module):
         x = self.decoder(
             tgt=y,
             memory=x,
-            tgt_mask=None,
+            tgt_mask=tgt_mask,
             memory_mask=None,
         )
 
@@ -366,8 +367,9 @@ class OpenUnmix(nn.Module):
         # x = self.linear_mapping(x)
         # print("X shape after linear mapping", x.shape)
 
-        # x_hidden = x_hidden.reshape(-1, nb_samples, self.dim_val)
-        # x = torch.cat([x, x_hidden], -1)
+        x_hidden = x_hidden.reshape(-1, nb_samples, self.dim_val)
+        x = torch.cat([x, x_hidden], -1)
+        x = self.dropout_cat(x)
         x = self.fc2(x.reshape(-1, x.shape[-1]))
         x = self.bn2(x)
 
