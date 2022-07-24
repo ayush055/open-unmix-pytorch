@@ -60,7 +60,7 @@ class OpenUnmix(nn.Module):
 
         # self.bn1 = BatchNorm1d(hidden_size)
 
-        self.pos_encoder = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.5, max_len=257)
+        # self.pos_encoder = PositionalEncoding(self.nb_bins * nb_channels, dropout=0.1, max_len=257)
 
         # if unidirectional:
         #     lstm_hidden_size = hidden_size
@@ -101,9 +101,9 @@ class OpenUnmix(nn.Module):
         self.n_heads=8
         self.dim_feedforward_encoder=2048
         self.dim_feedforward_decoder=2048
-        self.dropout_encoder=0.2
-        self.dropout_decoder=0.2
-        self.dropout_pos_enc = 0.2
+        self.dropout_encoder=0.1
+        self.dropout_decoder=0.1
+        self.dropout_pos_enc = 0.1
         self.n_encoder_layers = 4
         self.n_decoder_layers = 4
 
@@ -113,10 +113,14 @@ class OpenUnmix(nn.Module):
             out_features=self.dim_val 
             )
 
+        self.bn_encoder = nn.BatchNorm1d(self.dim_val)
+
         self.decoder_input_layer = nn.Linear(
             in_features=self.nb_bins * nb_channels, 
             out_features=self.dim_val 
             )  
+
+        self.bn_decoder = nn.BatchNorm1d(self.dim_val)
 
         self.linear_mapping = nn.Linear(
             in_features=self.dim_val,
@@ -245,10 +249,15 @@ class OpenUnmix(nn.Module):
         # normalize every instance in a batch
         # x = self.bn1(x)
 
+        print("X original shape", x.shape)
         x = x.reshape(-1, nb_channels * self.nb_bins)
+        print("X shape before fc compression", x.shape)
         x = self.encoder_input_layer(x)
-        x = torch.tanh(x)
+        print("X shape after fc compression", x.shape)
+        x = self.bn_encoder(x)
         x = x.reshape(nb_frames, nb_samples, self.dim_val)
+        print("X shape after reshape", x.shape)
+        x = torch.tanh(x)
         # squash range to [-1, 1]
         # x = torch.tanh(x)
 
@@ -277,10 +286,9 @@ class OpenUnmix(nn.Module):
 
 
         # print("X shape after first fc layer:", x.size())
+        print("X shape before positional encoding", x.shape)
         x = self.positional_encoding_layer(x)
-
-        print("X shape before encoder", x.shape)
-        x = self.encoder(src=x)
+        print("X shape after positional encoding", x.shape)
 
         # apply 3-layers of stacked LSTM
         # lstm_out = self.lstm(x)
@@ -296,11 +304,19 @@ class OpenUnmix(nn.Module):
             #         # add noise to y
             #         y += noise
         # y = self.y_dropout(y)
+        print("Y shape before fc layer:", y.size())
         y = y.reshape(-1, nb_channels * self.nb_bins)
+        print("Y shape before fc compression", y.shape)
         y = self.decoder_input_layer(y)
-        y = torch.tanh(y)
+        print("Y shape after fc compression", y.shape)
+        y = self.bn_decoder(y)
         y = y.reshape(y_frames, y_samples, self.dim_val)
+        print("Y shape after reshape", y.shape)
+        y = torch.tanh(y)
+
+        print("Y shape before positional encoding", y.shape)
         y = self.positional_encoding_layer(y)
+        print("Y shape after positional encoding", y.shape)
             # print("X shape:", x.size())
             # print("Y shape", y.size())
         # y = torch.tanh(y)
@@ -328,6 +344,10 @@ class OpenUnmix(nn.Module):
         # Frames x Samples x Hidden Size
         # y = np.swapaxes(y, 0, 1)
 
+        
+        print("X shape before encoder", x.shape)
+        x = self.encoder(src=x)
+
         print("Y shape:", y.shape)
         print("Memory shape", x.shape)
         x = self.decoder(
@@ -340,7 +360,10 @@ class OpenUnmix(nn.Module):
         print("Transformer out shape", x.shape)
 
         x = x.reshape(-1, self.dim_val)
+        print("X shape after reshape", x.shape)
+        
         x = self.linear_mapping(x)
+        print("X shape after linear mapping", x.shape)
 
         # y = y.reshape(-1, y_channels * self.nb_bins)
 
@@ -404,6 +427,7 @@ class OpenUnmix(nn.Module):
 
         # reshape back to original dim
         x = x.reshape(-1, nb_samples, nb_channels, self.nb_output_bins)
+        print("X shape after reshape", x.shape)
 
         # apply output scaling
         x *= self.output_scale
