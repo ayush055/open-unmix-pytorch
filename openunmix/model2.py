@@ -13,6 +13,23 @@ from openunmix import transformer
 import os
 import torchaudio
 from openunmix import utils
+from block_recurrent_transformer.block_recurrent_transformer import TokenEmbedding, BlockRecurrentAttention
+
+class BlockRecurrentDecoder(nn.Module):
+    """As simple as I can make the model.
+    """
+    
+    def __init__(self, dim):
+        super().__init__()
+        # self.embed = TokenEmbedding(dim, num_tokens)
+        self.attn = BlockRecurrentAttention(dim, dim)
+        # self.to_logits = nn.Linear(dim, num_tokens, bias=False)
+        # self.norm = nn.LayerNorm(dim)
+    
+    def forward(self, x, state=None):
+        x, state = self.attn(self.embed(x), state)
+        # x = self.to_logits(self.norm(x))
+        return x, state
 
 class OpenUnmix(nn.Module):
     """OpenUnmix Core spectrogram based separation module.
@@ -98,14 +115,14 @@ class OpenUnmix(nn.Module):
         self.dim_val = 512
         self.out_seq_len = 255
         self.max_seq_len=255
-        self.n_heads=8
+        self.n_heads=4
         self.dim_feedforward_encoder=2048
         self.dim_feedforward_decoder=2048
         self.dropout_encoder=0.5
         self.dropout_decoder=0.5
         self.dropout_pos_enc = 0.1
-        self.n_encoder_layers = 8
-        self.n_decoder_layers = 8
+        self.n_encoder_layers = 2
+        self.n_decoder_layers = 2
 
 
         self.encoder_input_layer = nn.Linear(
@@ -172,10 +189,12 @@ class OpenUnmix(nn.Module):
             norm=None
             )
 
+        self.rnn_transformer = BlockRecurrentDecoder(dim=self.dim_val)
+
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
         self.bn2 = BatchNorm1d(hidden_size)
-        self.dropout_cat = nn.Dropout(0.2)
+        self.dropout_cat = nn.Dropout(0.4)
 
         self.fc3 = Linear(
             in_features=hidden_size,
@@ -253,9 +272,9 @@ class OpenUnmix(nn.Module):
         print("X original shape", x.shape)
         x = x.reshape(-1, nb_channels * self.nb_bins)
         print("X shape before fc compression", x.shape)
-        x = self.encoder_input_layer(x)
+        x = self.encoder_input_layer(x) # compress bins to 512
         print("X shape after fc compression", x.shape)
-        x = self.bn_encoder(x)
+        x = self.bn_encoder(x) # batch normalization
         x = x.reshape(nb_frames, nb_samples, self.dim_val)
         print("X shape after reshape", x.shape)
         x = torch.tanh(x)
@@ -347,17 +366,19 @@ class OpenUnmix(nn.Module):
         # y = np.swapaxes(y, 0, 1)
 
         
-        print("X shape before encoder", x.shape)
-        x = self.encoder(src=x)
+        # print("X shape before encoder", x.shape)
+        # x = self.encoder(src=x)
 
-        print("Y shape:", y.shape)
-        print("Memory shape", x.shape)
-        x = self.decoder(
-            tgt=y,
-            memory=x,
-            tgt_mask=tgt_mask,
-            memory_mask=None,
-        )
+        # print("Y shape:", y.shape)
+        # print("Memory shape", x.shape)
+        # x = self.decoder(
+        #     tgt=y,
+        #     memory=x,
+        #     tgt_mask=tgt_mask,
+        #     memory_mask=None,
+        # )
+
+        x = self.rnn_transformer(x)
 
         print("Transformer out shape", x.shape)
 
