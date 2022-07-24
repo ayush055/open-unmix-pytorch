@@ -704,7 +704,6 @@ class Separator(nn.Module):
         return estimates
 
     def predict(self, X, model):
-        print(X.shape)
         y_input = torch.full((1, X.size(1), X.size(2)), -1, dtype=torch.float32).to(X.device)
 
         for _ in range(X.size(-1)):
