@@ -715,7 +715,7 @@ class Separator(nn.Module):
         for _ in range(X.size(-1)):
             pred = model(X.detach().clone(), y_input, train=False).to(X.device)
             print(y_input.size(), pred.size())
-            y_input = torch.cat((y_input, pred), dim=0)
+            y_input = torch.cat((y_input, pred), dim=-1)
 
         y_hat = y_input[1:, ...]
         y_hat = F.relu(y_hat) * X
