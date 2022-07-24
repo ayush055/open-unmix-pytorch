@@ -363,6 +363,7 @@ class OpenUnmix(nn.Module):
         # apply 3-layers of stacked LSTM
         lstm_out = self.lstm(x)
         x_img = self.unet(x_img)
+        print(x_img.shape)
 
         # print("Target:", tgt.size(), tgt)
 
