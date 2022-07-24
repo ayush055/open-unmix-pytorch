@@ -258,6 +258,7 @@ class OpenUnmix(nn.Module):
         x = x.reshape(nb_frames, nb_samples, self.dim_val)
         print("X shape after reshape", x.shape)
         x = torch.tanh(x)
+        x_hidden = x.clone()
         # squash range to [-1, 1]
         # x = torch.tanh(x)
 
@@ -359,11 +360,21 @@ class OpenUnmix(nn.Module):
 
         print("Transformer out shape", x.shape)
 
-        x = x.reshape(-1, self.dim_val)
-        print("X shape after reshape", x.shape)
+        # x = x.reshape(-1, self.dim_val)
+        # print("X shape after reshape", x.shape)
         
-        x = self.linear_mapping(x)
-        print("X shape after linear mapping", x.shape)
+        # x = self.linear_mapping(x)
+        # print("X shape after linear mapping", x.shape)
+
+        x_hidden = x_hidden.reshape(-1, nb_samples, self.dim_val)
+        x = torch.cat([x, x_hidden], -1)
+        x = self.fc2(x.reshape(-1, x.shape[-1]))
+        x = self.bn2(x)
+
+        x = F.relu(x)
+
+        x = self.fc3(x)
+        x = self.bn3(x)
 
         # y = y.reshape(-1, y_channels * self.nb_bins)
 
