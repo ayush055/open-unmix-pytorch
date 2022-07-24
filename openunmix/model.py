@@ -19,6 +19,9 @@ import os
 import torchaudio
 from openunmix import utils
 
+from unet_attention import XUnet
+import torchvision.transforms as T
+
 # from .transformer import CustomTransformerDecoder, PositionalEncoding
 
 class OpenUnmix(nn.Module):
@@ -91,6 +94,8 @@ class OpenUnmix(nn.Module):
         pool: output(16, nb_channels, 92 - 1, 15 - 1)
 
         """
+
+        self.unet = XUnet(16, channels=1)
 
         
         # self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
@@ -258,8 +263,7 @@ class OpenUnmix(nn.Module):
         x = x + self.input_mean
         x = x * self.input_scale
         
-        x_img = x.permute(1, 2, 3, 0).detach().clone()
-        
+        '''
         # print(x_img.shape)
         x_img = F.relu(self.conv1(x_img))
         x_img = F.relu(self.conv2(x_img))
@@ -290,6 +294,7 @@ class OpenUnmix(nn.Module):
         x_img = F.relu(self.conv17(x_img))
         # x_img = self.batchnorm5(x_img)
         print("x_img shape:", x_img.shape)
+        '''
         
         """ simple cnn model
         x = x.permute(1, 2, 3, 0)
@@ -325,6 +330,12 @@ class OpenUnmix(nn.Module):
         x = x.reshape(nb_frames, nb_samples, self.hidden_size)
         # squash range to [-1, 1]
         x = torch.tanh(x)
+
+        x_img = x.clone().permute(1, 2, 0).reshape(nb_samples, 1, self.hidden_size, nb_frames)
+        x_img = F.pad(x_img, (0, 512 - nb_frames, 0, 512-self.hidden_size))
+        print(x_img.shape)
+        print(x_img.shape)
+        x_img = self.unet(x_img)
 
         # Samples x Frames x Hidden Size
         # x = np.swapaxes(x, 0, 1)
@@ -416,16 +427,16 @@ class OpenUnmix(nn.Module):
 
         # print(x_img.shape)
         # print("x_img input shape:", x_img.reshape(-1, x_img.shape[1]).shape)
-        print("x_img shape before fc_cnn", x_img.shape)
-        x_img = x_img.reshape(-1, x_img.shape[-1] * x_img.shape[-2])
-        x_img = nn.Dropout(0.25)(x_img)
-        print("x_img shape after reshape", x_img.shape)
-        x_img = self.fc_cnn(x_img)
-        x_img = self.bn_cnn(x_img)
-        x_img = F.relu(x_img)
-        print("x_img shape after fc_cnn", x_img.shape)
-        x_img = x_img.reshape(lstm_out[0].shape[0], lstm_out[0].shape[1], -1)
-        print("x_img shape after reshape", x_img.shape)
+        # print("x_img shape before fc_cnn", x_img.shape)
+        # x_img = x_img.reshape(-1, x_img.shape[-1] * x_img.shape[-2])
+        # x_img = nn.Dropout(0.25)(x_img)
+        # print("x_img shape after reshape", x_img.shape)
+        # x_img = self.fc_cnn(x_img)
+        # x_img = self.bn_cnn(x_img)
+        # x_img = F.relu(x_img)
+        # print("x_img shape after fc_cnn", x_img.shape)
+        # x_img = x_img.reshape(lstm_out[0].shape[0], lstm_out[0].shape[1], -1)
+        # print("x_img shape after reshape", x_img.shape)
 
         # print("x_img shape after fc layer", x_img.shape)
         x = torch.cat([x, lstm_out[0], x_img], -1)
