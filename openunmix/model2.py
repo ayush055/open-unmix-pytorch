@@ -94,6 +94,81 @@ class OpenUnmix(nn.Module):
             dropout=0.1,
             activation='gelu',
         )
+
+        self.input_size = self.nb_bins * nb_channels
+        self.dim_val = 512
+        self.out_seq_len = 255
+        self.max_seq_len=257
+        self.n_heads=8
+        self.dim_feedforward_encoder=2048
+        self.dim_feedforward_decoder=2048
+        self.dropout_encoder=0.2
+        self.dropout_decoder=0.2
+        self.dropout_pos_enc = 0.2
+        self.n_encoder_layers = 4
+        self.n_decoder_layers = 4
+
+
+        self.encoder_input_layer = nn.Linear(
+            in_features=self.input_size, 
+            out_features=self.dim_val 
+            )
+
+        self.decoder_input_layer = nn.Linear(
+            in_features=self.input_size, 
+            out_features=self.dim_val 
+            )  
+
+        self.linear_mapping = nn.Linear(
+            in_features=self.dim_val,
+            out_features=self.nb_bins * nb_channels
+            )
+
+        # Create positional encoder
+        self.positional_encoding_layer = PositionalEncoding(
+            d_model=self.dim_val,
+            dropout=self.dropout_pos_enc,
+            max_len=self.max_seq_len
+            )
+
+        # The encoder layer used in the paper is identical to the one used by
+        # Vaswani et al (2017) on which the PyTorch module is based.
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=self.dim_val, 
+            nhead=self.n_heads,
+            dim_feedforward=self.dim_feedforward_encoder,
+            dropout=self.dropout_encoder,
+            )
+
+        # Stack the encoder layers in nn.TransformerDecoder
+        # It seems the option of passing a normalization instance is redundant
+        # in my case, because nn.TransformerEncoderLayer per default normalizes
+        # after each sub-layer
+        # (https://github.com/pytorch/pytorch/issues/24930).
+        self.encoder = nn.TransformerEncoder(
+            encoder_layer=encoder_layer,
+            num_layers=self.n_encoder_layers, 
+            norm=None
+            )
+
+        decoder_layer = nn.TransformerDecoderLayer(
+            d_model=self.dim_val,
+            nhead=self.n_heads,
+            dim_feedforward=self.dim_feedforward_decoder,
+            dropout=self.dropout_decoder,
+            )
+
+        # Stack the decoder layers in nn.TransformerDecoder
+        # It seems the option of passing a normalization instance is redundant
+        # in my case, because nn.TransformerDecoderLayer per default normalizes
+        # after each sub-layer
+        # (https://github.com/pytorch/pytorch/issues/24930).
+        self.decoder = nn.TransformerDecoder(
+            decoder_layer=decoder_layer,
+            num_layers=self.n_decoder_layers, 
+            norm=None
+            )
+
         fc2_hiddensize = hidden_size * 2
         self.fc2 = Linear(in_features=fc2_hiddensize, out_features=hidden_size, bias=False)
         self.bn2 = BatchNorm1d(hidden_size)
@@ -170,22 +245,26 @@ class OpenUnmix(nn.Module):
         # x = self.fc1(x.reshape(-1, nb_channels * self.nb_bins))
         # normalize every instance in a batch
         # x = self.bn1(x)
-        x = x.reshape(nb_frames, nb_samples, nb_channels * self.nb_bins)
+
+        x = x.reshape(-1, nb_channels * self.nb_bins)
+        x = self.encoder_input_layer(x)
+        x = torch.tanh(x)
+        x = x.reshape(nb_frames, nb_samples, self.dim_val)
         # squash range to [-1, 1]
         # x = torch.tanh(x)
 
         # Samples x Frames x Hidden Size
         # x = np.swapaxes(x, 0, 1)
 
-        SOS_TOKEN = torch.full((1, x.size(1), x.size(2)), -1, dtype=torch.float32)
-        EOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 0, dtype=torch.float32)
-        SOS_TOKEN = SOS_TOKEN.to(x.device)
-        EOS_TOKEN = EOS_TOKEN.to(x.device)
+        # SOS_TOKEN = torch.full((1, x.size(1), x.size(2)), -2, dtype=torch.float32)
+        # EOS_TOKEN = torch.full((1, x.size(1), x.size(2)), 0, dtype=torch.float32)
+        # SOS_TOKEN = SOS_TOKEN.to(x.device)
+        # EOS_TOKEN = EOS_TOKEN.to(x.device)
 
         # print("SOS shape:", SOS_TOKEN.size())
         # print("EOS shape:", EOS_TOKEN.size())
 
-        x = torch.cat((SOS_TOKEN, x, EOS_TOKEN), dim=0)
+        # x = torch.cat((SOS_TOKEN, x), dim=0)
 
         # x = nn.Dropout(0.5)(x)
 
@@ -199,7 +278,10 @@ class OpenUnmix(nn.Module):
 
 
         # print("X shape after first fc layer:", x.size())
-        x = self.pos_encoder(x)
+        x = self.positional_encoding_layer(x)
+
+        print("X shape before encoder", x.shape)
+        x = self.encoder(src=x)
 
         # apply 3-layers of stacked LSTM
         # lstm_out = self.lstm(x)
@@ -215,7 +297,11 @@ class OpenUnmix(nn.Module):
             #         # add noise to y
             #         y += noise
         # y = self.y_dropout(y)
-        y = y.reshape(y_frames, y_samples, nb_channels * self.nb_bins)
+        y = y.reshape(-1, nb_channels * self.nb_bins)
+        y = self.decoder_input_layer(y)
+        y = torch.tanh(y)
+        y = y.reshape(y_frames, y_samples, self.dim_val)
+        y = self.positional_encoding_layer(y)
             # print("X shape:", x.size())
             # print("Y shape", y.size())
         # y = torch.tanh(y)
@@ -226,31 +312,51 @@ class OpenUnmix(nn.Module):
             # # Samples x Frames x Hidden Size
             # y = np.swapaxes(y, 0, 1)
 
-        SOS_TOKEN = torch.full((1, y.size(1), y.size(2)), -1, dtype=torch.float32)
-        EOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 0, dtype=torch.float32)
+        SOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 2, dtype=torch.float32)
+        # EOS_TOKEN = torch.full((1, y.size(1), y.size(2)), 0, dtype=torch.float32)
         SOS_TOKEN = SOS_TOKEN.to(y.device)
-        EOS_TOKEN = EOS_TOKEN.to(y.device)
+        # EOS_TOKEN = EOS_TOKEN.to(y.device)
 
-        y = torch.cat((SOS_TOKEN, y, EOS_TOKEN), dim=0)
+        if train:
+            y = torch.cat((SOS_TOKEN, y), dim=0)
+            y = y[:-1, ...]
+            sequence_length = y.size(0)
+            tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
+        else:
+            sequence_length = y.size(0)
+            tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
 
         # Frames x Samples x Hidden Size
         # y = np.swapaxes(y, 0, 1)
-        y = self.pos_encoder(y)
+
+        print("Y shape:", y.shape)
+        print("Memory shape", x.shape)
+        x = self.decoder(
+            tgt=y,
+            memory=x,
+            tgt_mask=None,
+            memory_mask=None,
+        )
+
+        print("Transformer out shape", x.shape)
+
+        x = x.reshape(-1, self.dim_val)
+        x = self.linear_mapping(x)
 
         # y = y.reshape(-1, y_channels * self.nb_bins)
 
         # y_input = y[:, :-1]
 
-        if train:
-            y_input = y[:-1, ...]
-            sequence_length = y_input.size(0)
-            tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
-            transformer_out = self.transformer(x, y_input, tgt_mask=tgt_mask)[:-1, ...]
-            print(x.shape, y_input.shape, transformer_out.shape)
-        else:
-            sequence_length = y_input.size(0)
-            tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
-            transformer_out = self.transformer(x, y_input, tgt_mask=tgt_mask)
+        # if train:
+        #     y_input = y[:-1, ...]
+        #     sequence_length = y_input.size(0)
+        #     tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
+        #     transformer_out = self.transformer(x, y_input, tgt_mask=tgt_mask)[:-1, ...]
+        #     print(x.shape, y_input.shape, transformer_out.shape)
+        # else:
+        #     sequence_length = y_input.size(0)
+        #     tgt_mask = self.get_tgt_mask(sequence_length).to(self.device)
+        #     transformer_out = self.transformer(x, y_input, tgt_mask=tgt_mask)
 
         # print(sequence_length, y_input.size(), tgt_mask.size())
         # print("Y shifted shape", y_input.size())
@@ -298,7 +404,7 @@ class OpenUnmix(nn.Module):
         # x = self.bn3(x)
 
         # reshape back to original dim
-        x = transformer_out.reshape(-1, nb_samples, nb_channels, self.nb_output_bins)
+        x = x.reshape(-1, nb_samples, nb_channels, self.nb_output_bins)
 
         # apply output scaling
         x *= self.output_scale
