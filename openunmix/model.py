@@ -95,7 +95,7 @@ class OpenUnmix(nn.Module):
 
         """
 
-        self.unet = XUnet(64, channels=1)
+        self.unet = XUnet(16, channels=1)
 
         
         # self.fc1 = Linear(self.nb_bins * nb_channels, hidden_size, bias=False)
