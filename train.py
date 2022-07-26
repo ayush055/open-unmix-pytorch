@@ -17,9 +17,6 @@ from openunmix import model
 from openunmix import utils
 from openunmix import transforms
 
-import matplotlib
-import matplotlib.pyplot as plt
-
 tqdm.monitor_interval = 0
 
 
