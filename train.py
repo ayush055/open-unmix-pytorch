@@ -17,6 +17,9 @@ from openunmix import model
 from openunmix import utils
 from openunmix import transforms
 
+import matplotlib
+import matplotlib.pyplot as plt
+
 tqdm.monitor_interval = 0
 
 
@@ -29,7 +32,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
         X = encoder(x)
-        Y_hat = unmix(X)
+        Y_hat = unmix(X, x)
         Y = encoder(y)
         loss = torch.nn.functional.mse_loss(Y_hat, Y)
         loss.backward()

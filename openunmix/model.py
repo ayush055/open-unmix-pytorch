@@ -5,10 +5,292 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torch.nn import LSTM, BatchNorm1d, Linear, Parameter
+from torch.nn import LSTM, BatchNorm1d, Linear, Parameter, TransformerEncoderLayer
 from .filtering import wiener
 from .transforms import make_filterbanks, ComplexNorm
 
+import math
+from torch.autograd import Variable
+
+class PositionalEncoding(nn.Module):
+
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Args:
+            x: Tensor, shape [seq_len, batch_size, embedding_dim]
+        """
+        x = x + self.pe[:x.size(0)]
+        return self.dropout(x)
+
+class Encoder(nn.Module):
+    def __init__(self, kernel_size=4, in_channels=2, out_channels=64):
+        super(Encoder, self).__init__()
+        self.encoder = nn.Conv1d(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            stride=kernel_size//2,
+            padding=0,
+            bias=False
+        )
+        self.activation = nn.ReLU()
+    
+    def forward(self, x):
+        return self.activation(self.encoder(x))
+
+class Decoder(nn.Module):
+    def __init__(self, kernel_size=4, in_channels=64, out_channels=2):
+        super(Decoder, self).__init__()
+        self.decoder = nn.ConvTranspose1d(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            stride=kernel_size//2,
+            padding=0,
+            bias=False
+        )
+    
+    def forward(self, x):
+        return self.decoder(x)
+
+class TransformerBlock(nn.Module):
+    def __init__(self, feature_size, num_encoder_layers, num_heads):
+        super(TransformerBlock, self).__init__()
+        self.num_encoder_layers = num_encoder_layers
+        self.num_heads = num_heads
+
+        self.pos_encoder_intra = PositionalEncoding(d_model=feature_size, dropout=0, max_len=20000)
+        self.encoder_layers_intra = nn.ModuleList([])
+        for _ in range(self.num_encoder_layers):
+            self.encoder_layers_intra.append(
+                TransformerEncoderLayer(d_model=feature_size, nhead=self.num_heads, dim_feedforward=feature_size*4, dropout=0)
+            )
+
+        self.pos_encoder_inter = PositionalEncoding(d_model=feature_size, dropout=0, max_len=20000)
+        self.encoder_layers_inter = nn.ModuleList([])
+        for _ in range(self.num_encoder_layers):
+            self.encoder_layers_inter.append(
+                TransformerEncoderLayer(d_model=feature_size, nhead=self.num_heads, dim_feedforward=feature_size*4, dropout=0)
+            )
+    
+    def forward(self, x):
+        """
+        Args:
+            x: Tensor, shape [B, N, K, T]
+        """
+
+        B, N, K, T = x.shape
+
+        # Temporal positional encoding injected based on time but encoder layers process chunks
+
+        print(x.shape)
+        x_time = x.permute(0, 3, 2, 1).reshape(B*T, K, N) # Sequence length is num time steps
+        x_intra = x_time + self.pos_encoder_intra(x_time)
+
+        for i in range(self.num_encoder_layers):
+            x_intra = self.encoder_layers_intra[i](x_intra.permute(1, 0, 2)).permute(1, 0, 2)
+
+        x_out = x_intra + x_time
+        x_out = x_out.reshape(B, T, K, N).permute(0, 3, 2, 1) # B, N, K, T
+
+        x_chunk = x_out.permute(0, 2, 3, 1).reshape(B*K, T, N) # Sequence length is num chunks
+        x_inter = x_chunk + self.pos_encoder_inter(x_chunk)
+
+        for i in range(self.num_encoder_layers):
+            x_inter = self.encoder_layers_inter[i](x_inter.permute(1, 0, 2)).permute(1, 0, 2)
+
+        x_final = x_inter + x_chunk
+        x_final = x_final.reshape(B, K, T, N).permute(0, 3, 1, 2) # B, N, K, T
+
+        return x
+
+class TransformerSeparator(nn.Module):
+    def __init__(self, input_channels, chunk_size, num_transformer_blocks, num_encoder_layers, num_heads, conv_filters):
+        super(TransformerSeparator, self).__init__()
+        self.input_channels = input_channels
+        self.chunk_size = chunk_size
+        self.num_transformer_blocks = num_transformer_blocks
+        self.num_encoder_layers = num_encoder_layers
+        self.num_heads = num_heads
+        self.conv_filters = conv_filters
+
+        self.transformer_blocks = nn.ModuleList([])
+        for _ in range(self.num_transformer_blocks):
+            self.transformer_blocks.append(
+                TransformerBlock(
+                feature_size=self.conv_filters, 
+                num_encoder_layers=self.num_encoder_layers,
+                num_heads=self.num_heads,
+                )
+            )
+        
+        self.LayerNorm = nn.LayerNorm(conv_filters)
+        self.Linear1 = nn.Linear(in_features=conv_filters, out_features=conv_filters, bias=None)
+
+        self.PReLU = nn.PReLU()
+        self.Linear2 = nn.Linear(in_features=conv_filters, out_features=conv_filters*2, bias=None)
+
+        self.FeedForward1 = nn.Sequential(nn.Linear(conv_filters, conv_filters*2*2),
+                                          nn.ReLU(),
+                                          nn.Linear(conv_filters*2*2, conv_filters))
+        self.FeedForward2 = nn.Sequential(nn.Linear(conv_filters, conv_filters*2*2),
+                                          nn.ReLU(),
+                                          nn.Linear(conv_filters*2*2, conv_filters))
+        self.ReLU = nn.ReLU()
+
+    def forward(self, x):
+        x = self.LayerNorm(x.permute(0, 2, 1))
+        x = self.Linear1(x).permute(0, 2, 1)
+
+        out, gap = self.split_feature(x, self.chunk_size)
+
+        for i in range(self.num_transformer_blocks):
+            out = self.transformer_blocks[i](out)
+        
+        out = self.PReLU(out)
+        out = self.Linear2(out.permute(0, 3, 2, 1)).permute(0, 3, 2, 1)
+
+        B, _, K, S = out.shape
+
+        # OverlapAdd
+        out = out.reshape(B, -1, self.input_channels, K, S).permute(0, 2, 1, 3, 4)  # [B, N*C, K, S] -> [B, N, C, K, S]
+        out = out.reshape(B * self.input_channels, -1, K, S)
+        out = self.merge_feature(out, gap)  # [B*C, N, K, S]  -> [B*C, N, I]
+
+        # FFW + ReLU
+        out = self.FeedForward1(out.permute(0, 2, 1))
+        out = self.FeedForward2(out).permute(0, 2, 1)
+        out = self.ReLU(out)
+
+        return out
+
+    # TAKEN FROM SEPFORMER CODE
+    def pad_segment(self, input, segment_size):
+
+        # 输入特征: (B, N, T)
+
+        batch_size, dim, seq_len = input.shape
+        segment_stride = segment_size // 2
+
+        rest = segment_size - (segment_stride + seq_len % segment_size) % segment_size
+
+        if rest > 0:
+            pad = Variable(torch.zeros(batch_size, dim, rest)).type(input.type())
+            input = torch.cat([input, pad], 2)
+
+        pad_aux = Variable(torch.zeros(batch_size, dim, segment_stride)).type(input.type())
+
+        input = torch.cat([pad_aux, input, pad_aux], 2)
+
+        return input, rest
+
+    def split_feature(self, input, segment_size):
+
+        # 将特征分割成段大小的块
+        # 输入特征: (B, N, T)
+
+        input, rest = self.pad_segment(input, segment_size)
+        batch_size, dim, seq_len = input.shape
+        segment_stride = segment_size // 2
+
+        segments1 = input[:, :, :-segment_stride].contiguous().view(batch_size, dim, -1, segment_size)
+        segments2 = input[:, :, segment_stride:].contiguous().view(batch_size, dim, -1, segment_size)
+        segments = torch.cat([segments1, segments2], 3).view(batch_size, dim, -1, segment_size).transpose(2, 3)
+
+        return segments.contiguous(), rest
+
+    def merge_feature(self, input, rest):
+
+        # 将分段的特征合并成完整的话语
+        # 输入特征: (B, N, L, K)
+
+        batch_size, dim, segment_size, _ = input.shape
+        segment_stride = segment_size // 2
+        input = input.transpose(2, 3).contiguous().view(batch_size, dim, -1, segment_size * 2)  # B, N, K, L
+
+        input1 = input[:, :, :, :segment_size].contiguous().view(batch_size, dim, -1)[:, :, segment_stride:]
+        input2 = input[:, :, :, segment_size:].contiguous().view(batch_size, dim, -1)[:, :, :-segment_stride]
+
+        output = input1 + input2
+
+        if rest > 0:
+            output = output[:, :, :-rest]
+
+        return output.contiguous()  # B, N, T
+
+class TransformerWaveform(nn.Module):
+    def __init__(self, input_channels, conv_kernel_size, conv_filters, chunk_size, num_transformer_blocks, num_encoder_layers, num_heads):
+        super(TransformerWaveform, self).__init__()
+        self.in_channels = input_channels
+        self.chunk_size = chunk_size
+        self.num_transformer_blocks = num_transformer_blocks
+        self.num_encoder_layers = num_encoder_layers
+        self.num_heads = num_heads
+        self.conv_filters = conv_filters
+        self.conv_kernel_size = conv_kernel_size
+
+        self.encoder = Encoder(kernel_size=conv_kernel_size, in_channels=input_channels, out_channels=conv_filters)
+        self.transformer = TransformerSeparator(input_channels=input_channels, chunk_size=chunk_size, num_transformer_blocks=num_transformer_blocks, num_encoder_layers=num_encoder_layers, num_heads=num_heads, conv_filters=conv_filters)
+        self.decoder = Decoder(kernel_size=conv_kernel_size, in_channels=conv_filters, out_channels=input_channels)
+
+    def forward(self, x):
+        x, rest = self.pad_signal(x)
+
+        enc_out = self.encoder(x)
+        masks = self.transformer(enc_out)
+        _, N, I = masks.shape
+
+        masks = masks.view(self.in_channels, -1, N, I)  # [C, B, N, I]，torch.Size([2, 1, 64, 16002])
+
+        # Masking
+        out = [masks[i] * enc_out for i in range(self.in_channels)]  # C * ([B, N, I]) * [B, N, I]
+
+        # Decoding
+        audio = [self.decoder(out[i]) for i in range(self.in_channels)]  # C * [B, 1, T]
+
+        # for i in range(self.in_channels):
+        audio[0] = audio[0][:, :, self.conv_kernel_size // 2:-(rest + self.conv_kernel_size // 2)].contiguous()  # B, 1, T
+        audio[1] = audio[1][:, :, self.conv_kernel_size // 2:-(rest + self.conv_kernel_size // 2)].contiguous()  # B, 1, T
+        audio = torch.cat(audio, dim=1)  # [B, C, T]
+
+        return audio
+
+    def pad_signal(self, input):
+
+        # 输入波形: (B, T) or (B, 1, T)
+        # 调整和填充
+
+        if input.dim() not in [2, 3]:
+            raise RuntimeError("Input can only be 2 or 3 dimensional.")
+
+        if input.dim() == 2:
+            input = input.unsqueeze(1)
+
+        batch_size = input.size(0)  # 每一个批次的大小
+        nsample = input.size(2)  # 单个数据的长度
+        rest = self.conv_kernel_size - (self.conv_kernel_size // 2 + nsample % self.conv_kernel_size) % self.conv_kernel_size
+
+        if rest > 0:
+            pad = Variable(torch.zeros(batch_size, self.in_channels, rest)).type(input.type())
+            print(pad.shape, input.shape)
+            input = torch.cat([input, pad], dim=2)
+
+        pad_aux = Variable(torch.zeros(batch_size, self.in_channels, self.conv_kernel_size // 2)).type(input.type())
+
+        input = torch.cat([pad_aux, input, pad_aux], 2)
+
+        return input, rest
 
 class OpenUnmix(nn.Module):
     """OpenUnmix Core spectrogram based separation module.
@@ -81,6 +363,18 @@ class OpenUnmix(nn.Module):
 
         self.bn3 = BatchNorm1d(self.nb_output_bins * nb_channels)
 
+        # Time Domain Layers
+
+        self.transformer = TransformerWaveform(
+            input_channels=2,
+            conv_kernel_size=4,
+            conv_filters=64,
+            num_heads=4,
+            chunk_size=250,
+            num_transformer_blocks=2,
+            num_encoder_layers=4,
+        )
+
         if input_mean is not None:
             input_mean = torch.from_numpy(-input_mean[: self.nb_bins]).float()
         else:
@@ -104,7 +398,7 @@ class OpenUnmix(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, x_time: Tensor) -> Tensor:
         """
         Args:
             x: input spectrogram of shape
@@ -114,6 +408,13 @@ class OpenUnmix(nn.Module):
             Tensor: filtered spectrogram of shape
                 `(nb_samples, nb_channels, nb_bins, nb_frames)`
         """
+
+        # Time Domain code
+
+        print("x_time shape before transformer: ", x_time.shape)
+        x_time = self.transformer(x_time)
+        print("x_time shape after transformer: ", x_time.shape)
+
 
         # permute so that batch is last for lstm
         x = x.permute(3, 0, 1, 2)
@@ -163,6 +464,7 @@ class OpenUnmix(nn.Module):
         # since our output is non-negative, we can apply RELU
         x = F.relu(x) * mix
         # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
+
         return x.permute(1, 2, 3, 0)
 
 
