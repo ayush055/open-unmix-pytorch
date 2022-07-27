@@ -59,7 +59,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
             num_frames = Y.size(-1)
             arr = torch.zeros(Y.size()).to(device)
             print("X shape", x.shape)
-            for i in range(0, len(x), hop_length):
+            for i in range(0, x.shape[-1], hop_length):
                 X_tmp, x_time_temp = x[..., i:(i + width)], x_time[..., i:(i+width)]
                 X_tmp = encoder(X_tmp)
                 print(X_tmp.shape, x_time_temp.shape, num_frames, arr.shape)
