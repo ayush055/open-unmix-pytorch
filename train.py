@@ -54,6 +54,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
         width = int(44100 * args.seq_dur)
         hop_length = width//2# + 1
         resample = torchaudio.transforms.Resample(44100, 16000).to(device)
+        print(width, hop_length)
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
             Y = encoder(y)
