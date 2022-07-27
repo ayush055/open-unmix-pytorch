@@ -47,7 +47,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
     return losses.avg
 
 
-def valid(args, unmix, encoder, device, valid_sampler, istft):
+def valid(args, unmix, encoder, device, valid_sampler):
     losses = utils.AverageMeter()
     unmix.eval()
     with torch.no_grad():
@@ -79,7 +79,6 @@ def valid(args, unmix, encoder, device, valid_sampler, istft):
                     x_time_temp = resample(x_time_temp)
 
                     Y_hat = unmix(X_tmp, x_time_temp)
-                    print(istft(Y_hat, length=width).shape)
                     print("Y_hat shape", Y_hat.shape)
                     print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length, "num_frames", num_frames)
                     arr[..., frame:] += Y_hat[..., :num_frames - frame]
@@ -89,7 +88,6 @@ def valid(args, unmix, encoder, device, valid_sampler, istft):
                 X_tmp = encoder(X_tmp)
                 x_time_temp = resample(x_time_temp)
                 Y_hat = unmix(X_tmp, x_time_temp)
-                print("ISTFT", istft(Y_hat, length=width).shape)
                 print(Y_hat.shape)
                 print(arr.shape)
                 arr[..., frame:(frame + Y_hat.shape[-1])] += Y_hat
@@ -374,7 +372,7 @@ def main():
     for epoch in t:
         t.set_description("Training epoch")
         end = time.time()
-        valid_loss = valid(args, unmix, encoder, device, valid_sampler, istft)
+        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
         valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         scheduler.step(valid_loss)
