@@ -38,7 +38,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         # print("original x stft shape", X.shape)
         Y_hat = unmix(X, x_time)
         Y = encoder(y)
-        print("Y shape", Y.shape)
+        print("train Y_hat shape", Y_hat.shape)
         loss = torch.nn.functional.mse_loss(Y_hat, Y)
         loss.backward()
         optimizer.step()
@@ -63,36 +63,36 @@ def valid(args, unmix, encoder, device, valid_sampler):
             
             loss = 0
             num_timesteps = x.size(-1)
-            num_frames = Y.size(-1)
             arr = torch.zeros(Y.size()).to(device)
+
+            zeros = torch.zeros((1, 2, hop_length), device=device)
+            print("zeros", zeros.size())
+            print("x", x.size())
+            x = torch.cat([zeros, x, zeros], dim=2)
 
             frame = 0
             
+            print(num_timesteps)
+            print(width)
+            print(hop_length)
+            count = 0
             for i in range(0, num_timesteps, hop_length):
+                count += 1
                 X_tmp = x[..., i:(i + width)]
                 x_time_temp = X_tmp.clone()
-
-                if i + width > num_timesteps:
-                    padding = (0, i + width - num_timesteps)
-                    X_tmp, x_time_temp = F.pad(X_tmp, padding, "constant", 0), F.pad(x_time_temp, padding, "constant", 0)
-                    X_tmp = encoder(X_tmp)
-                    x_time_temp = resample(x_time_temp)
-
-                    Y_hat = unmix(X_tmp, x_time_temp)
-                    print("Y_hat shape", Y_hat.shape)
-                    print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length, "num_frames", num_frames)
-                    arr[..., frame:] += Y_hat[..., :num_frames - frame]
-                    print("Final frame", frame)
-                    break
 
                 X_tmp = encoder(X_tmp)
                 x_time_temp = resample(x_time_temp)
                 Y_hat = unmix(X_tmp, x_time_temp)
-                print(Y_hat.shape)
-                print(arr.shape)
+                # print("valid Y_hat shape", Y_hat.shape)
+                # print("valid seq_dur", args.seq_dur)
                 arr[..., frame:(frame + Y_hat.shape[-1])] += Y_hat
                 frame += Y_hat.shape[-1] // 2
-                print("Frame start", frame)
+                # print("Frame start", frame)
+
+            print("i", i)
+            print("count", count)
+
 
             arr[..., :Y_hat.shape[-1] // 2] *= 2
             arr[..., frame + Y_hat.shape[-1] // 2:] *= 2
@@ -372,7 +372,7 @@ def main():
     for epoch in t:
         t.set_description("Training epoch")
         end = time.time()
-        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
+        valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
         valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         scheduler.step(valid_loss)
