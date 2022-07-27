@@ -159,20 +159,20 @@ class TransformerSeparator(nn.Module):
             out = self.transformer_blocks[i](out)
         
         out = self.PReLU(out)
-        print("out shape: ", out.shape)
+        # print("out shape: ", out.shape)
         out = self.Linear2(out.permute(0, 3, 2, 1)).permute(0, 3, 2, 1)
-        print("out shape: ", out.shape)
+        # print("out shape: ", out.shape)
         B, _, K, S = out.shape
 
         # OverlapAdd
         out = out.reshape(B, -1, self.speakers, K, S).permute(0, 2, 1, 3, 4)  # [B, N*C, K, S] -> [B, N, C, K, S]
-        print("out shape: ", out.shape)
+        # print("out shape: ", out.shape)
         out = out.reshape(B * self.speakers, -1, K, S)
-        print("out shape: ", out.shape)
+        # print("out shape: ", out.shape)
         out = self.merge_feature(out, gap)  # [B*C, N, K, S]  -> [B*C, N, I]
 
         # FFW + ReLU
-        print("separator end", out.shape)
+        # print("separator end", out.shape)
         out = self.FeedForward1(out.permute(0, 2, 1))
         out = self.FeedForward2(out).permute(0, 2, 1)
         out = self.ReLU(out)
@@ -253,13 +253,13 @@ class TransformerWaveform(nn.Module):
         x, rest = self.pad_signal(x)
 
         enc_out = self.encoder(x)
-        print("enc_out: ", enc_out.shape)
+        # print("enc_out: ", enc_out.shape)
         masks = self.transformer(enc_out)
-        print("masks: ", masks.shape)
+        # print("masks: ", masks.shape)
         _, N, I = masks.shape
 
         masks = masks.view(self.speakers, -1, N, I)  # [C, B, N, I]，torch.Size([2, 1, 64, 16002])
-        print("masks reshaped: ", masks.shape)
+        # print("masks reshaped: ", masks.shape)
         # print("MASKS", masks.shape)
         # print("Encoding", enc_out.shape)
 

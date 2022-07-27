@@ -50,6 +50,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
     with torch.no_grad():
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
+            print(x.shape)
             x_time = x.clone()
             # print("original shape", x_time.shape)
             resample = torchaudio.transforms.Resample(44100, 16000).to(device)
