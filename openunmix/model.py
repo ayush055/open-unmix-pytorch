@@ -252,6 +252,7 @@ class TransformerWaveform(nn.Module):
         _, N, I = masks.shape
 
         masks = masks.view(self.in_channels, -1, N, I)  # [C, B, N, I]，torch.Size([2, 1, 64, 16002])
+        print("MASKS", masks.shape)
 
         # Masking
         out = [masks[i] * enc_out for i in range(self.in_channels)]  # C * ([B, N, I]) * [B, N, I]
@@ -411,10 +412,7 @@ class OpenUnmix(nn.Module):
 
         # Time Domain code
 
-        print("x_time shape before transformer: ", x_time.shape)
         x_time = self.transformer(x_time)
-        print("x_time shape after transformer: ", x_time.shape)
-
 
         # permute so that batch is last for lstm
         x = x.permute(3, 0, 1, 2)
