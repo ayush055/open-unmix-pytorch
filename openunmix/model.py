@@ -2,6 +2,7 @@ from typing import Optional, Mapping
 
 import numpy as np
 import torch
+import torchaudio
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
@@ -115,9 +116,9 @@ class TransformerBlock(nn.Module):
         return x
 
 class TransformerSeparator(nn.Module):
-    def __init__(self, input_channels, chunk_size, num_transformer_blocks, num_encoder_layers, num_heads, conv_filters):
+    def __init__(self, speakers, chunk_size, num_transformer_blocks, num_encoder_layers, num_heads, conv_filters):
         super(TransformerSeparator, self).__init__()
-        self.input_channels = input_channels
+        self.speakers = speakers
         self.chunk_size = chunk_size
         self.num_transformer_blocks = num_transformer_blocks
         self.num_encoder_layers = num_encoder_layers
@@ -140,7 +141,7 @@ class TransformerSeparator(nn.Module):
         self.PReLU = nn.PReLU()
         self.Linear2 = nn.Linear(in_features=conv_filters, out_features=conv_filters*2, bias=None)
 
-        self.FeedForward1 = nn.Sequential(nn.Linear(conv_filters, conv_filters*2*2),
+        self.FeedForward1 = nn.Sequential(nn.Linear(conv_filters*2, conv_filters*2*2),
                                           nn.ReLU(),
                                           nn.Linear(conv_filters*2*2, conv_filters))
         self.FeedForward2 = nn.Sequential(nn.Linear(conv_filters, conv_filters*2*2),
@@ -158,16 +159,20 @@ class TransformerSeparator(nn.Module):
             out = self.transformer_blocks[i](out)
         
         out = self.PReLU(out)
+        print("out shape: ", out.shape)
         out = self.Linear2(out.permute(0, 3, 2, 1)).permute(0, 3, 2, 1)
-
+        print("out shape: ", out.shape)
         B, _, K, S = out.shape
 
         # OverlapAdd
-        out = out.reshape(B, -1, self.input_channels, K, S).permute(0, 2, 1, 3, 4)  # [B, N*C, K, S] -> [B, N, C, K, S]
-        out = out.reshape(B * self.input_channels, -1, K, S)
+        out = out.reshape(B, -1, self.speakers, K, S).permute(0, 2, 1, 3, 4)  # [B, N*C, K, S] -> [B, N, C, K, S]
+        print("out shape: ", out.shape)
+        out = out.reshape(B * self.speakers, -1, K, S)
+        print("out shape: ", out.shape)
         out = self.merge_feature(out, gap)  # [B*C, N, K, S]  -> [B*C, N, I]
 
         # FFW + ReLU
+        print("separator end", out.shape)
         out = self.FeedForward1(out.permute(0, 2, 1))
         out = self.FeedForward2(out).permute(0, 2, 1)
         out = self.ReLU(out)
@@ -229,8 +234,9 @@ class TransformerSeparator(nn.Module):
         return output.contiguous()  # B, N, T
 
 class TransformerWaveform(nn.Module):
-    def __init__(self, input_channels, conv_kernel_size, conv_filters, chunk_size, num_transformer_blocks, num_encoder_layers, num_heads):
+    def __init__(self, speakers, input_channels, conv_kernel_size, conv_filters, chunk_size, num_transformer_blocks, num_encoder_layers, num_heads):
         super(TransformerWaveform, self).__init__()
+        self.speakers = speakers
         self.in_channels = input_channels
         self.chunk_size = chunk_size
         self.num_transformer_blocks = num_transformer_blocks
@@ -240,34 +246,37 @@ class TransformerWaveform(nn.Module):
         self.conv_kernel_size = conv_kernel_size
 
         self.encoder = Encoder(kernel_size=conv_kernel_size, in_channels=input_channels, out_channels=conv_filters)
-        self.transformer = TransformerSeparator(input_channels=input_channels, chunk_size=chunk_size, num_transformer_blocks=num_transformer_blocks, num_encoder_layers=num_encoder_layers, num_heads=num_heads, conv_filters=conv_filters)
+        self.transformer = TransformerSeparator(speakers=speakers, chunk_size=chunk_size, num_transformer_blocks=num_transformer_blocks, num_encoder_layers=num_encoder_layers, num_heads=num_heads, conv_filters=conv_filters)
         self.decoder = Decoder(kernel_size=conv_kernel_size, in_channels=conv_filters, out_channels=input_channels)
 
     def forward(self, x):
         x, rest = self.pad_signal(x)
 
         enc_out = self.encoder(x)
+        print("enc_out: ", enc_out.shape)
         masks = self.transformer(enc_out)
+        print("masks: ", masks.shape)
         _, N, I = masks.shape
 
-        masks = masks.view(self.in_channels, -1, N, I)  # [C, B, N, I]，torch.Size([2, 1, 64, 16002])
+        masks = masks.view(self.speakers, -1, N, I)  # [C, B, N, I]，torch.Size([2, 1, 64, 16002])
+        print("masks reshaped: ", masks.shape)
         # print("MASKS", masks.shape)
         # print("Encoding", enc_out.shape)
 
         # Masking
-        out = [masks[i] * enc_out for i in range(self.in_channels)]  # C * ([B, N, I]) * [B, N, I]
+        out = [masks[i] * enc_out for i in range(self.speakers)]  # C * ([B, N, I]) * [B, N, I]
         # print("out0", out[0].shape)
         # print("out1", out[1].shape)
 
         # Decoding
-        audio = [self.decoder(out[i]) for i in range(self.in_channels)]  # C * [B, 1, T]
+        audio = [self.decoder(out[i]) for i in range(self.speakers)]  # C * [B, 1, T]
 
         # print("audio0", audio[0].shape)
         # print("audio1", audio[1].shape)
 
         # for i in range(self.in_channels):
         audio[0] = audio[0][:, :, self.conv_kernel_size // 2:-(rest + self.conv_kernel_size // 2)].contiguous()  # B, 1, T
-        audio[1] = audio[1][:, :, self.conv_kernel_size // 2:-(rest + self.conv_kernel_size // 2)].contiguous()  # B, 1, T
+        # audio[1] = audio[1][:, :, self.conv_kernel_size // 2:-(rest + self.conv_kernel_size // 2)].contiguous()  # B, 1, T
         audio = torch.cat(audio, dim=1)  # [B, C, T]
 
         return audio
@@ -329,6 +338,8 @@ class OpenUnmix(nn.Module):
     ):
         super(OpenUnmix, self).__init__()
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         self.nb_output_bins = nb_bins
         if max_bin:
             self.nb_bins = max_bin
@@ -371,6 +382,7 @@ class OpenUnmix(nn.Module):
         # Time Domain Layers
 
         self.transformer = TransformerWaveform(
+            speakers=1,
             input_channels=2,
             conv_kernel_size=4,
             conv_filters=64,
@@ -416,8 +428,17 @@ class OpenUnmix(nn.Module):
 
         # Time Domain code
 
+        print("x_time shape: ", x_time.shape)
         x_time = self.transformer(x_time)
-        print(x_time.shape)
+        print("x_time shape:", x_time.shape)
+        resample = torchaudio.transforms.Resample(16000, 44100).to(self.device)
+        x_time = resample(x_time)
+        print("x_time shape:", x_time.shape)
+        stft, _ = make_filterbanks(
+        n_fft=4096, n_hop=1024, sample_rate=44100
+        )
+        encoder = torch.nn.Sequential(stft, ComplexNorm(mono=False)).to(self.device)
+        x_time = encoder(x_time)
 
         # permute so that batch is last for lstm
         x = x.permute(3, 0, 1, 2)
@@ -460,12 +481,23 @@ class OpenUnmix(nn.Module):
         # reshape back to original dim
         x = x.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
 
+        # x_time = x_time.reshape()
+
         # apply output scaling
         x *= self.output_scale
         x += self.output_mean
 
         # since our output is non-negative, we can apply RELU
         x = F.relu(x) * mix
+
+        print("x time shape", x_time.shape)
+        x_time = x_time.reshape(-1, x_time.shape[-1]).permute(1, 0)
+        print("x time shape", x_time.shape)
+        x_time = x_time.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
+        print("x time shape", x_time.shape)
+
+        x = (x + x_time) / 2
+
         # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
 
         return x.permute(1, 2, 3, 0)
