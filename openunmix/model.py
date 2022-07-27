@@ -392,6 +392,8 @@ class OpenUnmix(nn.Module):
             num_encoder_layers=4,
         )
 
+        self.filter_bins = Linear(in_features=self.nb_output_bins*2, out_features=self.nb_output_bins, bias=False)
+
         if input_mean is not None:
             input_mean = torch.from_numpy(-input_mean[: self.nb_bins]).float()
         else:
@@ -496,7 +498,9 @@ class OpenUnmix(nn.Module):
         x_time = x_time.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
         # print("x time shape", x_time.shape)
 
-        x = (x + x_time) / 2
+        # x = (x + x_time) / 2
+        x = torch.cat([x, x_time], -1)
+        x = self.filter_bins(x)
 
         # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
 
