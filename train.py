@@ -38,6 +38,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         # print("original x stft shape", X.shape)
         Y_hat = unmix(X, x_time)
         Y = encoder(y)
+        print("Y shape", Y.shape)
         loss = torch.nn.functional.mse_loss(Y_hat, Y)
         loss.backward()
         optimizer.step()
@@ -368,7 +369,7 @@ def main():
     for epoch in t:
         t.set_description("Training epoch")
         end = time.time()
-        valid_loss = valid(args, unmix, encoder, device, valid_sampler)
+        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
         valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         scheduler.step(valid_loss)
