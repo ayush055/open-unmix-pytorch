@@ -251,19 +251,19 @@ class TransformerWaveform(nn.Module):
         _, N, I = masks.shape
 
         masks = masks.view(self.in_channels, -1, N, I)  # [C, B, N, I]，torch.Size([2, 1, 64, 16002])
-        print("MASKS", masks.shape)
-        print("Encoding", enc_out.shape)
+        # print("MASKS", masks.shape)
+        # print("Encoding", enc_out.shape)
 
         # Masking
         out = [masks[i] * enc_out for i in range(self.in_channels)]  # C * ([B, N, I]) * [B, N, I]
-        print("out0", out[0].shape)
-        print("out1", out[1].shape)
+        # print("out0", out[0].shape)
+        # print("out1", out[1].shape)
 
         # Decoding
         audio = [self.decoder(out[i]) for i in range(self.in_channels)]  # C * [B, 1, T]
 
-        print("audio0", audio[0].shape)
-        print("audio1", audio[1].shape)
+        # print("audio0", audio[0].shape)
+        # print("audio1", audio[1].shape)
 
         # for i in range(self.in_channels):
         audio[0] = audio[0][:, :, self.conv_kernel_size // 2:-(rest + self.conv_kernel_size // 2)].contiguous()  # B, 1, T
@@ -417,6 +417,7 @@ class OpenUnmix(nn.Module):
         # Time Domain code
 
         x_time = self.transformer(x_time)
+        print(x_time.shape)
 
         # permute so that batch is last for lstm
         x = x.permute(3, 0, 1, 2)
