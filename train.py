@@ -31,7 +31,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
         x_time = x.clone()
-        # print("original shape", x_time.shape)
+        print("original shape", x_time.shape)
         resample = torchaudio.transforms.Resample(44100, 16000).to(device)
         x_time = resample(x_time)
         X = encoder(x)
