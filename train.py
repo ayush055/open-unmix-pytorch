@@ -37,6 +37,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         X = encoder(x)
         # print("original x stft shape", X.shape)
         Y_hat = unmix(X, x_time)
+        print("Y_hat shape", Y_hat.shape)
         Y = encoder(y)
         print("train Y_hat shape", Y_hat.shape)
         loss = torch.nn.functional.mse_loss(Y_hat, Y)
@@ -84,8 +85,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 X_tmp = encoder(X_tmp)
                 x_time_temp = resample(x_time_temp)
                 Y_hat = unmix(X_tmp, x_time_temp)
-                # print("valid Y_hat shape", Y_hat.shape)
-                # print("valid seq_dur", args.seq_dur)
+
                 arr[..., frame:(frame + Y_hat.shape[-1])] += Y_hat
                 frame += Y_hat.shape[-1] // 2
                 # print("Frame start", frame)
