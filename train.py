@@ -48,7 +48,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
     losses = utils.AverageMeter()
     unmix.eval()
     with torch.no_grad():
-        width = 44100 * args.seq_dur
+        width = int(44100 * args.seq_dur)
         hop_length = width//2 + 1
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
