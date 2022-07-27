@@ -500,7 +500,7 @@ class OpenUnmix(nn.Module):
 
         # x = (x + x_time) / 2
         x = torch.cat([x, x_time], -1)
-        print("x shape", x.shape)
+        print("x final shape", x.shape)
         x = self.filter_bins(x)
 
         # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
