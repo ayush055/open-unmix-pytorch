@@ -31,7 +31,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
         x_time = x.clone()
-        # print("original shape", x_time.shape)
+        print("original shape", x_time.shape)
         resample = torchaudio.transforms.Resample(44100, 16000).to(device)
         x_time = resample(x_time)
         X = encoder(x)
@@ -67,7 +67,6 @@ def valid(args, unmix, encoder, device, valid_sampler):
             arr = torch.zeros(Y.size()).to(device)
 
             frame = 0
-            frame_hop = 61
             
             for i in range(0, num_timesteps, hop_length):
                 X_tmp = x[..., i:(i + width)]
@@ -92,11 +91,11 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 print(Y_hat.shape)
                 print(arr.shape)
                 arr[..., frame:(frame + Y_hat.shape[-1])] += Y_hat
-                frame += frame_hop
+                frame += Y_hat.shape[-1] // 2
                 print("Frame start", frame)
 
-            arr[..., :frame_hop] *= 2
-            arr[..., frame + frame_hop:] *= 2
+            arr[..., :Y_hat.shape[-1] // 2] *= 2
+            arr[..., frame + Y_hat.shape[-1] // 2:] *= 2
             
             arr /= 2
 
@@ -373,7 +372,7 @@ def main():
     for epoch in t:
         t.set_description("Training epoch")
         end = time.time()
-        valid_loss = valid(args, unmix, encoder, device, valid_sampler)
+        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
         valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         scheduler.step(valid_loss)
