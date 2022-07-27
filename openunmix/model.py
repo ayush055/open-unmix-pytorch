@@ -392,6 +392,7 @@ class OpenUnmix(nn.Module):
             num_encoder_layers=4,
         )
 
+        print("output bins", self.nb_output_bins)
         self.filter_bins = Linear(in_features=self.nb_output_bins*2, out_features=self.nb_output_bins, bias=False)
 
         if input_mean is not None:
