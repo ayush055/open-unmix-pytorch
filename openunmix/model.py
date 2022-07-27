@@ -256,12 +256,14 @@ class TransformerWaveform(nn.Module):
 
         # Masking
         out = [masks[i] * enc_out for i in range(self.in_channels)]  # C * ([B, N, I]) * [B, N, I]
+        print("out0", out[0].shape)
+        print("out1")
 
         # Decoding
         audio = [self.decoder(out[i]) for i in range(self.in_channels)]  # C * [B, 1, T]
 
-        print(audio[0].shape)
-        print(audio[1].shape)
+        print("audio0", audio[0].shape)
+        print("audio1", audio[1].shape)
 
         # for i in range(self.in_channels):
         audio[0] = audio[0][:, :, self.conv_kernel_size // 2:-(rest + self.conv_kernel_size // 2)].contiguous()  # B, 1, T
