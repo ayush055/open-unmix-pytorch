@@ -52,15 +52,15 @@ def valid(args, unmix, encoder, device, valid_sampler):
         hop_length = width//2 + 1
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
+            Y = encoder(y)
             x_time = x.clone()
             loss = 0
-            num_frames = X.size(-1)
-            arr = torch.zeros(X.size()).to(device)
-            for i in range(0, num_frames, hop_length):
-                X_tmp, x_time_temp, Y_tmp = X[..., i:(i + width)], x_time[..., i:(i+width)], Y[..., i:(i+width)]
+            num_frames = Y.size(-1)
+            arr = torch.zeros(Y.size()).to(device)
+            for i in range(0, len(x), hop_length):
+                X_tmp, x_time_temp, Y_tmp = x[..., i:(i + width)], x_time[..., i:(i+width)], Y[..., i:(i+width)]
                 X_tmp = encoder(X_tmp)
-                Y_tmp = encoder(Y_tmp)
-                print(X_tmp.shape, x_time_temp.shape, Y_tmp.shape)
+                print(X_tmp.shape, x_time_temp.shape, Y_tmp.shape, num_frames, arr.shape)
                 return
             # print("original shape", x_time.shape)
             resample = torchaudio.transforms.Resample(44100, 16000).to(device)
