@@ -94,7 +94,6 @@ class TransformerBlock(nn.Module):
 
         # Temporal positional encoding injected based on time but encoder layers process chunks
 
-        print(x.shape)
         x_time = x.permute(0, 3, 2, 1).reshape(B*T, K, N) # Sequence length is num time steps
         x_intra = x_time + self.pos_encoder_intra(x_time)
 
@@ -253,7 +252,8 @@ class TransformerWaveform(nn.Module):
 
         masks = masks.view(self.in_channels, -1, N, I)  # [C, B, N, I]，torch.Size([2, 1, 64, 16002])
         print("MASKS", masks.shape)
-
+        print("Encoding", enc_out.shape)
+        
         # Masking
         out = [masks[i] * enc_out for i in range(self.in_channels)]  # C * ([B, N, I]) * [B, N, I]
 
@@ -284,7 +284,6 @@ class TransformerWaveform(nn.Module):
 
         if rest > 0:
             pad = Variable(torch.zeros(batch_size, self.in_channels, rest)).type(input.type())
-            print(pad.shape, input.shape)
             input = torch.cat([input, pad], dim=2)
 
         pad_aux = Variable(torch.zeros(batch_size, self.in_channels, self.conv_kernel_size // 2)).type(input.type())
