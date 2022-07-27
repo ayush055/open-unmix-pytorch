@@ -79,6 +79,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 X_tmp = encoder(X_tmp)
                 x_time_temp = resample(x_time_temp)
                 Y_hat = unmix(X_tmp, x_time_temp)
+                print(Y_hat.shape)
+                print(arr.shape)
                 arr[..., i:(i+width)] += Y_hat
 
             arr[..., :hop_length] *= 2
