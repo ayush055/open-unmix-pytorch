@@ -392,7 +392,6 @@ class OpenUnmix(nn.Module):
             num_encoder_layers=4,
         )
 
-        print("output bins", self.nb_output_bins)
         self.filter_bins = Linear(in_features=self.nb_output_bins*2, out_features=self.nb_output_bins, bias=False)
 
         if input_mean is not None:
@@ -502,6 +501,7 @@ class OpenUnmix(nn.Module):
         # x = (x + x_time) / 2
         x = torch.cat([x, x_time], -1)
         print("x final shape", x.shape)
+        print("output bins", self.nb_output_bins)
         x = self.filter_bins(x)
 
         # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
