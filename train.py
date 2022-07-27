@@ -47,7 +47,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
     return losses.avg
 
 
-def valid(args, unmix, encoder, device, valid_sampler):
+def valid(args, unmix, encoder, device, valid_sampler, istft):
     losses = utils.AverageMeter()
     unmix.eval()
     with torch.no_grad():
@@ -79,6 +79,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     x_time_temp = resample(x_time_temp)
 
                     Y_hat = unmix(X_tmp, x_time_temp)
+                    print(istft(Y_hat, length=width).shape)
                     print("Y_hat shape", Y_hat.shape)
                     print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length, "num_frames", num_frames)
                     arr[..., frame:] += Y_hat[..., :num_frames - frame]
@@ -283,7 +284,7 @@ def main():
     )
     valid_sampler = torch.utils.data.DataLoader(valid_dataset, batch_size=1, **dataloader_kwargs)
 
-    stft, _ = transforms.make_filterbanks(
+    stft, istft = transforms.make_filterbanks(
         n_fft=args.nfft, n_hop=args.nhop, sample_rate=train_dataset.sample_rate
     )
     encoder = torch.nn.Sequential(stft, model.ComplexNorm(mono=args.nb_channels == 1)).to(device)
@@ -374,7 +375,7 @@ def main():
         end = time.time()
         # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
-        valid_loss = valid(args, unmix, encoder, device, valid_sampler)
+        valid_loss = valid(args, unmix, encoder, device, valid_sampler, istft)
         scheduler.step(valid_loss)
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
