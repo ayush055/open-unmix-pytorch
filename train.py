@@ -17,6 +17,8 @@ from openunmix import model
 from openunmix import utils
 from openunmix import transforms
 
+import torch.nn.functional as F
+
 tqdm.monitor_interval = 0
 
 
@@ -50,27 +52,41 @@ def valid(args, unmix, encoder, device, valid_sampler):
     with torch.no_grad():
         width = int(44100 * args.seq_dur)
         hop_length = width//2 + 1
+        resample = torchaudio.transforms.Resample(44100, 16000).to(device)
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
-            x_time = x.clone()
             Y = encoder(y)
             
             loss = 0
+            num_timesteps = x.size(-1)
             num_frames = Y.size(-1)
             arr = torch.zeros(Y.size()).to(device)
-            print("X shape", x.shape)
-            for i in range(0, x.shape[-1], hop_length):
-                X_tmp, x_time_temp = x[..., i:(i + width)], x_time[..., i:(i+width)]
+            
+            for i in range(0, num_timesteps, hop_length):
+                X_tmp = x[..., i:(i + width)]
+                x_time_temp = X_tmp.clone()
+
+                if i + width > num_timesteps:
+                    padding = (0, i + width - num_timesteps)
+                    X_tmp, x_time_temp = F.pad(X_tmp, padding, "constant", 0), F.pad(x_time_temp, padding, "constant", 0)
+                    X_tmp = encoder(X_tmp)
+                    x_time_temp = resample(x_time_temp)
+
+                    Y_hat = unmix(X_tmp, x_time_temp)
+                    arr[..., i:] += Y_hat[..., :num_frames - i]
+                    break
+
                 X_tmp = encoder(X_tmp)
-                print(X_tmp.shape, x_time_temp.shape, num_frames, arr.shape)
-            return
-            # print("original shape", x_time.shape)
-            resample = torchaudio.transforms.Resample(44100, 16000).to(device)
-            x_time = resample(x_time)
-            X = encoder(x)
-            Y_hat = unmix(X, x_time)
-            Y = encoder(y)
-            loss = torch.nn.functional.mse_loss(Y_hat, Y)
+                x_time_temp = resample(x_time_temp)
+                Y_hat = unmix(X_tmp, x_time_temp)
+                arr[..., i:(i+width)] += Y_hat
+
+            arr[..., :hop_length] *= 2
+            arr[..., i + hop_length:] *= 2
+            
+            arr /= 2
+
+            loss = torch.nn.functional.mse_loss(arr, Y)
             losses.update(loss.item(), Y.size(1))
         return losses.avg
 
