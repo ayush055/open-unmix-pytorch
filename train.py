@@ -48,10 +48,20 @@ def valid(args, unmix, encoder, device, valid_sampler):
     losses = utils.AverageMeter()
     unmix.eval()
     with torch.no_grad():
+        width = 44100 * args.seq_dur
+        hop_length = width//2 + 1
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
-            print(x.shape)
             x_time = x.clone()
+            X = encoder(x)
+            Y = encoder(y)
+            loss = 0
+            num_frames = X.size(-1)
+            arr = torch.zeros(X.size()).to(device)
+            for i in range(0, num_frames, hop_length):
+                X_tmp, x_time_temp, Y_tmp = X[..., i:(i + width)], x_time[..., i:(i+width)], Y[..., i:(i+width)]
+                print(X_tmp.shape, x_time_temp.shape, Y_tmp.shape)
+                return
             # print("original shape", x_time.shape)
             resample = torchaudio.transforms.Resample(44100, 16000).to(device)
             x_time = resample(x_time)
