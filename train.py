@@ -94,8 +94,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
             print("count", count)
 
 
-            arr[..., :Y_hat.shape[-1] // 2] *= 2
-            arr[..., frame + Y_hat.shape[-1] // 2:] *= 2
+            # arr[..., :Y_hat.shape[-1] // 2] *= 2
+            # arr[..., frame + Y_hat.shape[-1] // 2:] *= 2
             
             arr /= 2
 
@@ -372,7 +372,6 @@ def main():
     for epoch in t:
         t.set_description("Training epoch")
         end = time.time()
-        valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
         valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         scheduler.step(valid_loss)
