@@ -428,12 +428,12 @@ class OpenUnmix(nn.Module):
 
         # Time Domain code
 
-        print("x_time shape: ", x_time.shape)
+        # print("x_time shape: ", x_time.shape)
         x_time = self.transformer(x_time)
-        print("x_time shape:", x_time.shape)
+        # print("x_time shape:", x_time.shape)
         resample = torchaudio.transforms.Resample(16000, 44100).to(self.device)
         x_time = resample(x_time)
-        print("x_time shape:", x_time.shape)
+        # print("x_time shape:", x_time.shape)
         stft, _ = make_filterbanks(
         n_fft=4096, n_hop=1024, sample_rate=44100
         )
@@ -490,11 +490,11 @@ class OpenUnmix(nn.Module):
         # since our output is non-negative, we can apply RELU
         x = F.relu(x) * mix
 
-        print("x time shape", x_time.shape)
+        # print("x time shape", x_time.shape)
         x_time = x_time.reshape(-1, x_time.shape[-1]).permute(1, 0)
-        print("x time shape", x_time.shape)
+        # print("x time shape", x_time.shape)
         x_time = x_time.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
-        print("x time shape", x_time.shape)
+        # print("x time shape", x_time.shape)
 
         x = (x + x_time) / 2
 
