@@ -57,6 +57,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
             Y = encoder(y)
+
+            print(x.shape, Y.shape)
             
             loss = 0
             num_timesteps = x.size(-1)
