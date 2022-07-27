@@ -257,7 +257,7 @@ class TransformerWaveform(nn.Module):
         # Masking
         out = [masks[i] * enc_out for i in range(self.in_channels)]  # C * ([B, N, I]) * [B, N, I]
         print("out0", out[0].shape)
-        print("out1")
+        print("out1", out[1].shape)
 
         # Decoding
         audio = [self.decoder(out[i]) for i in range(self.in_channels)]  # C * [B, 1, T]
