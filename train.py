@@ -75,6 +75,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     x_time_temp = resample(x_time_temp)
 
                     Y_hat = unmix(X_tmp, x_time_temp)
+                    print("Y_hat shape", Y_hat.shape)
+                    print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length, "num_frames", num_frames)
                     arr[..., frame:] += Y_hat[..., :num_frames - frame]
                     print("Final frame", frame)
                     break
