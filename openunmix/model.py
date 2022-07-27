@@ -253,12 +253,15 @@ class TransformerWaveform(nn.Module):
         masks = masks.view(self.in_channels, -1, N, I)  # [C, B, N, I]，torch.Size([2, 1, 64, 16002])
         print("MASKS", masks.shape)
         print("Encoding", enc_out.shape)
-        
+
         # Masking
         out = [masks[i] * enc_out for i in range(self.in_channels)]  # C * ([B, N, I]) * [B, N, I]
 
         # Decoding
         audio = [self.decoder(out[i]) for i in range(self.in_channels)]  # C * [B, 1, T]
+
+        print(audio[0].shape)
+        print(audio[1].shape)
 
         # for i in range(self.in_channels):
         audio[0] = audio[0][:, :, self.conv_kernel_size // 2:-(rest + self.conv_kernel_size // 2)].contiguous()  # B, 1, T
