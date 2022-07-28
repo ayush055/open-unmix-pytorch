@@ -48,7 +48,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
     return losses.avg
 
 
-def valid(args, unmix, encoder, device, valid_sampler):
+def valid2(args, unmix, encoder, device, valid_sampler):
     losses = utils.AverageMeter()
     unmix.eval()
     with torch.no_grad():
@@ -105,6 +105,65 @@ def valid(args, unmix, encoder, device, valid_sampler):
             losses.update(loss.item(), Y.size(1))
         return losses.avg
 
+def valid(args, unmix, encoder, device, valid_sampler):
+    losses = utils.AverageMeter()
+    unmix.eval()
+    with torch.no_grad():
+        width = int(44100 * args.seq_dur)
+        hop_length = width//2# + 1
+        resample = torchaudio.transforms.Resample(44100, 16000).to(device)
+        print(width, hop_length)
+        for x, y in valid_sampler:
+            x, y = x.to(device), y.to(device)
+            x_time = x.clone()
+            x = encoder(x)
+            Y = encoder(y)
+
+            print(x.shape, Y.shape)
+            
+            loss = 0
+            num_timesteps = x.size(-1)
+            num_frames = Y.size(-1)
+            arr = torch.zeros(Y.size()).to(device)
+
+            frame = 0
+            frame_step = num_timesteps // hop_length + 1
+            frame_len = frame_step * 2
+
+            print("frame_step", frame_step, "frame len", frame_len)
+            
+            for i in range(0, num_timesteps, hop_length):
+                X_tmp = x[..., frame:(frame + frame_step)]
+                x_time_temp = x_time[..., i:(i + width)]
+
+                if i + width > num_timesteps:
+                    padding_time = (0, i + width - num_timesteps)
+                    padding_freq = (0, frame + frame_len - num_frames)
+                    X_tmp, x_time_temp = F.pad(X_tmp, padding_freq, "constant", 0), F.pad(x_time_temp, padding_time, "constant", 0)
+                    x_time_temp = resample(x_time_temp)
+
+                    Y_hat = unmix(X_tmp, x_time_temp)
+                    print("Y_hat shape", Y_hat.shape)
+                    print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length, "num_frames", num_frames)
+                    arr[..., frame:] += Y_hat[..., :num_frames - frame]
+                    print("Final frame", frame, "Final frame end", frame + frame_step)
+                    break
+
+                x_time_temp = resample(x_time_temp)
+                Y_hat = unmix(X_tmp, x_time_temp)
+                print("Y_hat shape", Y_hat.shape)
+                arr[..., frame:(frame + frame_len)] += Y_hat
+                frame += frame_step
+                print("Frame start", frame, "Frame end", frame + frame_len)
+
+            arr[..., :frame_step] *= 2
+            arr[..., frame + frame_step:] *= 2
+            
+            arr /= 2
+
+            loss = torch.nn.functional.mse_loss(arr, Y)
+            losses.update(loss.item(), Y.size(1))
+        return losses.avg
 
 def get_statistics(args, encoder, dataset):
     encoder = copy.deepcopy(encoder).to("cpu")
@@ -275,6 +334,7 @@ def main():
     train_dataset, valid_dataset, args = data.load_datasets(parser, args)
     print(train_dataset)
     print(valid_dataset)
+    print(args.nfft, args.nhop, train_dataset.sample_rate)
 
     # create output dir if not exist
     target_path = Path(args.output)
