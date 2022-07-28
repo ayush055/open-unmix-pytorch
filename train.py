@@ -130,10 +130,10 @@ def valid(args, unmix, encoder, device, valid_sampler):
             frame_step = num_frames // (num_timesteps // hop_length + 1) + 1
             frame_len = frame_step * 2
 
-            print("frame_step", frame_step, "frame len", frame_len)
+            print("num_timesteps", num_timesteps, "hop_length", hop_length, "frame_step", frame_step, "frame len", frame_len)
             
             for i in range(0, num_timesteps, hop_length):
-                X_tmp = x[..., frame:(frame + frame_step)]
+                X_tmp = x[..., frame:(frame + frame_len)]
                 x_time_temp = x_time[..., i:(i + width)]
 
                 if i + width > num_timesteps:
