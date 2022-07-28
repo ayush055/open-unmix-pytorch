@@ -66,10 +66,10 @@ def valid(args, unmix, encoder, device, valid_sampler):
             num_timesteps = x.size(-1)
             arr = torch.zeros(Y.size()).to(device)
 
-            zeros = torch.zeros((1, 2, hop_length), device=device)
-            print("zeros", zeros.size())
-            print("x", x.size())
-            x = torch.cat([zeros, x, zeros], dim=2)
+            # zeros = torch.zeros((1, 2, hop_length), device=device)
+            # print("zeros", zeros.size())
+            # print("x", x.size())
+            # x = torch.cat([zeros, x, zeros], dim=2)
 
             frame = 0
             
@@ -93,7 +93,6 @@ def valid(args, unmix, encoder, device, valid_sampler):
             print("i", i)
             print("count", count)
             print(arr)
-            print("SUM OF ARRAY", torch.sum(arr))
 
 
             # arr[..., :Y_hat.shape[-1] // 2] *= 2
