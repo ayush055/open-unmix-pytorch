@@ -150,13 +150,14 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length, "num_frames", num_frames)
                     print("Keeping only {} frames".format(num_frames_to_keep))
                     arr[..., frame:frame+num_frames_to_keep] += Y_hat[..., :num_frames_to_keep]
-                    print("Final frame", frame)
+                    print("Final iteration start frame {}, end frame {}".format(frame, frame + num_frames_to_keep))
                     break
 
                 X_tmp = encoder(X_tmp)
                 x_time_temp = resample(x_time_temp)
                 Y_hat = unmix(X_tmp, x_time_temp)
                 print("Y_hat shape", Y_hat.shape)
+
                 arr[..., frame:(frame + Y_hat.shape[-1])] += Y_hat
                 frame += Y_hat.shape[-1] // 2
                 print("Frame start", frame)
@@ -165,6 +166,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
 
             arr[..., :Y_hat.shape[-1] // 2] *= 2
             arr[..., frame + Y_hat.shape[-1] // 2:] *= 2
+            print("doubling frames from 0 to {} and from {} to end".format(frame, frame + Y_hat.shape[-1] // 2))
             
             arr /= 2
 
