@@ -125,9 +125,11 @@ def valid(args, unmix, encoder, device, valid_sampler):
 
             frame = 0
             num_windows = (num_timesteps // hop_length) + 1
+            print("num_windows", num_windows)
             arr_len = num_windows // 2
             batch, channel, bins, _ = Y.size()
             arr = torch.zeros(size=(batch, channel, bins, arr_len)).to(device)
+            print("Final arr shape", arr.shape)
             
             for i in range(0, num_timesteps, hop_length):
                 X_tmp = x[..., i:(i + width)]
