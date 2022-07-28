@@ -77,7 +77,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
             print(width)
             print(hop_length)
             count = 0
-            for i in range(0, num_timesteps, hop_length):
+            for i in range(0, num_timesteps, width):
                 count += 1
                 X_tmp = x[..., i:(i + width)]
                 x_time_temp = X_tmp.clone()
@@ -87,7 +87,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 Y_hat = unmix(X_tmp, x_time_temp)
 
                 arr[..., frame:(frame + Y_hat.shape[-1])] += Y_hat
-                frame += Y_hat.shape[-1] // 2
+                frame += Y_hat.shape[-1]
                 print("Frame start", frame, "Frame end", frame + Y_hat.shape[-1])
 
             print("i", i)
