@@ -174,7 +174,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
             arr = arr[..., :frame + num_frames_to_keep]
             print("final arr shape", arr.shape)
 
-            arr = F.interpolate(arr, size=(bins, num_frames))
+            Y = F.interpolate(Y, size=(bins, arr.shape[-1]))
             print("interpolated arr shape", arr.shape)
 
             loss = torch.nn.functional.mse_loss(arr, Y)
