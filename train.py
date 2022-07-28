@@ -124,7 +124,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
             num_frames = Y.size(-1)
 
             frame = 0
-            num_windows = (num_timesteps // width) + 1
+            num_windows = (num_timesteps // hop_length) + 1
             arr_len = num_windows // 2
             batch, channel, bins, _ = Y.size()
             arr = torch.zeros(size=(batch, channel, bins, arr_len)).to(device)
