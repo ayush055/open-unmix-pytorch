@@ -115,55 +115,56 @@ def valid(args, unmix, encoder, device, valid_sampler):
         print(width, hop_length)
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
-            x_time = x.clone()
-            x = encoder(x)
             Y = encoder(y)
 
             print(x.shape, Y.shape)
             
             loss = 0
-            num_timesteps = x_time.size(-1)
+            num_timesteps = x.size(-1)
             num_frames = Y.size(-1)
-            arr = torch.zeros(Y.size()).to(device)
+            arr = []
 
             frame = 0
-            frame_step = num_frames // (num_timesteps // hop_length + 1) + 1
-            frame_len = frame_step * 2
-
-            print("num_timesteps", num_timesteps, "hop_length", hop_length, "frame_step", frame_step, "frame len", frame_len)
             
             for i in range(0, num_timesteps, hop_length):
-                X_tmp = x[..., frame:(frame + frame_len)]
-                x_time_temp = x_time[..., i:(i + width)]
+                X_tmp = x[..., i:(i + width)]
+                x_time_temp = X_tmp.clone()
 
                 if i + width > num_timesteps:
-                    padding_time = (0, i + width - num_timesteps)
-                    padding_freq = (0, frame + frame_len - num_frames)
-                    X_tmp, x_time_temp = F.pad(X_tmp, padding_freq, "constant", 0), F.pad(x_time_temp, padding_time, "constant", 0)
+                    num_frames_to_keep = int((X_tmp.size(-1) - (args.nfft - 1) - 1 / args.nhop) + 1)
+                    padding = (0, i + width - num_timesteps)
+                    X_tmp, x_time_temp = F.pad(X_tmp, padding, "constant", 0), F.pad(x_time_temp, padding, "constant", 0)
+                    X_tmp = encoder(X_tmp)
                     x_time_temp = resample(x_time_temp)
 
                     Y_hat = unmix(X_tmp, x_time_temp)
                     print("Y_hat shape", Y_hat.shape)
                     print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length, "num_frames", num_frames)
-                    arr[..., frame:] += Y_hat[..., :num_frames - frame]
-                    print("Final frame", frame, "Final frame end", frame + frame_step)
+                    arr.append(Y_hat[..., :num_frames_to_keep])
+                    print("Final frame", frame)
                     break
 
+                X_tmp = encoder(X_tmp)
                 x_time_temp = resample(x_time_temp)
                 Y_hat = unmix(X_tmp, x_time_temp)
                 print("Y_hat shape", Y_hat.shape)
-                arr[..., frame:(frame + frame_len)] += Y_hat
-                frame += frame_step
-                print("Frame start", frame, "Frame end", frame + frame_len)
+                arr.append(Y_hat)
+                frame += Y_hat.shape[-1] // 2
+                print("Frame start", frame)
 
-            arr[..., :frame_step] *= 2
-            arr[..., frame + frame_step:] *= 2
+            print(len(arr))
+            arr = torch.cat(arr, dim=-1)
+            print("arr shape", arr.shape)
+
+            arr[..., :Y_hat.shape[-1] // 2] *= 2
+            arr[..., frame + Y_hat.shape[-1] // 2:] *= 2
             
             arr /= 2
 
             loss = torch.nn.functional.mse_loss(arr, Y)
             losses.update(loss.item(), Y.size(1))
         return losses.avg
+
 
 def get_statistics(args, encoder, dataset):
     encoder = copy.deepcopy(encoder).to("cpu")
