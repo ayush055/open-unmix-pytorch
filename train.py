@@ -96,8 +96,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
             print("sum of array", torch.sum(arr))
 
 
-            # arr[..., :Y_hat.shape[-1] // 2] *= 2
-            # arr[..., frame + Y_hat.shape[-1] // 2:] *= 2
+            arr[..., :Y_hat.shape[-1] // 2] *= 2
+            arr[..., frame + Y_hat.shape[-1] // 2:] *= 2
             
             arr /= 2
 
