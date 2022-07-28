@@ -14,7 +14,7 @@ vocals_sdr_df = vocals_sdr_df.reset_index()
 # print(vocals_sdr_df)
 # vocals_sdr_df = vocals_sdr_df.drop(columns=["track"])
 print(vocals_sdr_df)
-vocals_sdr_df = vocals_sdr_df.rename(columns={"score": "baseline"})
+vocals_sdr_df = vocals_sdr_df.rename(columns={"score": "Baseline"})
 # vocals_sdr_df.plot()
 
 eval_df_transformer = museval.MethodStore()
@@ -28,11 +28,11 @@ vocals_sdr_df_transformer = vocals_sdr_df_transformer.sort_values(by="track", as
 vocals_sdr_df_transformer = vocals_sdr_df_transformer.reset_index()
 # print(vocals_sdr_df)
 # vocals_sdr_df_transformer = vocals_sdr_df_transformer.drop(columns=["track"])
-vocals_sdr_df_transformer = vocals_sdr_df_transformer.rename(columns={"score": "transformer"})
+vocals_sdr_df_transformer = vocals_sdr_df_transformer.rename(columns={"score": "Transformer"})
 print(vocals_sdr_df_transformer)
 # vocals_sdr_df_transformer.plot()
 
-vocals_sdr_scores = pd.concat([vocals_sdr_df, vocals_sdr_df_transformer["transformer"]], axis=1)
+vocals_sdr_scores = pd.concat([vocals_sdr_df, vocals_sdr_df_transformer["Transformer"]], axis=1)
 vocals_sdr_scores.plot()
 
 
@@ -43,5 +43,5 @@ print(vocals_sdr_scores)
 
 vocals_sdr_scores.plot.bar()
 
-vocals_sdr_scores.groupby("genre").mean().plot.bar(rot=0)
+vocals_sdr_scores.groupby("genre").mean().plot.bar(ylabel="SDR (dB)", xlabel="Genre", title="Baseline and Transformer Performance by Genre")
 plt.show()
