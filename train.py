@@ -122,12 +122,12 @@ def valid(args, unmix, encoder, device, valid_sampler):
             print(x.shape, Y.shape)
             
             loss = 0
-            num_timesteps = x.size(-1)
+            num_timesteps = x_time.size(-1)
             num_frames = Y.size(-1)
             arr = torch.zeros(Y.size()).to(device)
 
             frame = 0
-            frame_step = num_timesteps // hop_length + 1
+            frame_step = num_frames // (num_timesteps // hop_length + 1) + 1
             frame_len = frame_step * 2
 
             print("frame_step", frame_step, "frame len", frame_len)
