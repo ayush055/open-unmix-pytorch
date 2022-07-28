@@ -125,7 +125,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
 
             frame = 0
             num_windows = (num_timesteps // hop_length) + 1
-            window_length = int((width - (args.nfft - 1) - 1) / args.nhop) + 1)
+            window_length = int((width - (args.nfft - 1) - 1 / args.nhop)) + 1
             print("num_windows", num_windows)
             print("window_length", window_length)
             arr_len = (num_windows // 2) * window_length
@@ -138,7 +138,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 x_time_temp = X_tmp.clone()
 
                 if i + width > num_timesteps:
-                    num_frames_to_keep = int((X_tmp.size(-1) - (args.nfft - 1) - 1 / args.nhop) + 1)
+                    num_frames_to_keep = int((X_tmp.size(-1) - (args.nfft - 1) - 1 / args.nhop)) + 1
                     padding = (0, i + width - num_timesteps)
                     X_tmp, x_time_temp = F.pad(X_tmp, padding, "constant", 0), F.pad(x_time_temp, padding, "constant", 0)
                     X_tmp = encoder(X_tmp)
