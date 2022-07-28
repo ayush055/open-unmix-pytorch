@@ -122,9 +122,12 @@ def valid(args, unmix, encoder, device, valid_sampler):
             loss = 0
             num_timesteps = x.size(-1)
             num_frames = Y.size(-1)
-            arr = []
 
             frame = 0
+            num_windows = (num_timesteps // width) + 1
+            arr_len = num_windows // 2
+            batch, channel, bins, _ = Y.size()
+            arr = torch.zeros(size=(batch, channel, bins, arr_len)).to(device)
             
             for i in range(0, num_timesteps, hop_length):
                 X_tmp = x[..., i:(i + width)]
@@ -140,7 +143,9 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     Y_hat = unmix(X_tmp, x_time_temp)
                     print("Y_hat shape", Y_hat.shape)
                     print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length, "num_frames", num_frames)
-                    arr.append(Y_hat[..., :num_frames_to_keep])
+                    print("Keeping only {} frames".format(num_frames_to_keep))
+                    arr[..., frame:] += Y_hat[..., :num_frames_to_keep]
+                    frame += num_frames_to_keep
                     print("Final frame", frame)
                     break
 
@@ -148,12 +153,10 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 x_time_temp = resample(x_time_temp)
                 Y_hat = unmix(X_tmp, x_time_temp)
                 print("Y_hat shape", Y_hat.shape)
-                arr.append(Y_hat)
+                arr[..., frame:(frame + Y_hat.shape[-1])] += Y_hat
                 frame += Y_hat.shape[-1] // 2
                 print("Frame start", frame)
 
-            print(len(arr))
-            arr = torch.cat(arr, dim=-1)
             print("arr shape", arr.shape)
 
             arr[..., :Y_hat.shape[-1] // 2] *= 2
