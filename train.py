@@ -138,7 +138,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 x_time_temp = X_tmp.clone()
 
                 if i + width > num_timesteps:
-                    num_frames_to_keep = int((X_tmp.size(-1)     - (args.nfft - 1) - 1) / args.nhop) + 1
+                    print("Time steps left", X_tmp.size(-1))
+                    num_frames_to_keep = int((X_tmp.size(-1) - (args.nfft - 1) - 1) / args.nhop) + 1
                     padding = (0, i + width - num_timesteps)
                     X_tmp, x_time_temp = F.pad(X_tmp, padding, "constant", 0), F.pad(x_time_temp, padding, "constant", 0)
                     X_tmp = encoder(X_tmp)
@@ -148,8 +149,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     print("Y_hat shape", Y_hat.shape)
                     print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length, "num_frames", num_frames)
                     print("Keeping only {} frames".format(num_frames_to_keep))
-                    arr[..., frame:] += Y_hat[..., :num_frames_to_keep]
-                    frame += num_frames_to_keep
+                    arr[..., frame:frame+num_frames_to_keep] += Y_hat[..., :num_frames_to_keep]
                     print("Final frame", frame)
                     break
 
@@ -167,6 +167,10 @@ def valid(args, unmix, encoder, device, valid_sampler):
             arr[..., frame + Y_hat.shape[-1] // 2:] *= 2
             
             arr /= 2
+
+            print("original arr shape", arr.shape)
+            arr = arr[..., :frame + num_frames_to_keep]
+            print("final arr shape", arr.shape)
 
             loss = torch.nn.functional.mse_loss(arr, Y)
             losses.update(loss.item(), Y.size(1))
