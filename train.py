@@ -88,7 +88,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
 
                 arr[..., frame:(frame + Y_hat.shape[-1])] += Y_hat
                 frame += Y_hat.shape[-1] // 2
-                # print("Frame start", frame)
+                print("Frame start", frame, "Frame end", frame + Y_hat.shape[-1])
 
             print("i", i)
             print("count", count)
