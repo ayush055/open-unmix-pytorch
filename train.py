@@ -106,7 +106,7 @@ def valid2(args, unmix, encoder, device, valid_sampler):
         return losses.avg
 
 def encoder_y(args, encoder, arr_len, y):
-    bins = (args.nfft // 2 + 1) * 2
+    bins = args.nfft // 2 + 1
     batch = args.batch_size
     channel = args.nb_channels
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -165,7 +165,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
             print("num_windows", num_windows)
             print("window_length", window_length)
             arr_len = (num_windows * window_length) // 2
-            bins = (args.nfft // 2 + 1) * 2
+            bins = args.nfft // 2 + 1
             batch = args.batch_size
             channel = args.nb_channels
             arr = torch.zeros(size=(batch, channel, bins, arr_len)).to(device)
