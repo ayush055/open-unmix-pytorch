@@ -501,7 +501,6 @@ class OpenUnmix(nn.Module):
         # x = (x + x_time) / 2
         x = torch.cat([x, x_time], -1)
         x = nn.Dropout(0.25)(x)
-        print(self.nb_output_bins)
         x = x.reshape(-1, self.nb_output_bins*nb_channels*2)
         x = self.filter_bins(x)
         x = x.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)

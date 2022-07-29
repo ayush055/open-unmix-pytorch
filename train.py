@@ -139,10 +139,10 @@ def encoder_y(args, encoder, arr_len, y):
 
     arr /= 2
 
-    print("original arr shape", arr.shape)
+    # print("original arr shape", arr.shape)
     arr = arr[..., :frame + num_frames_to_keep]
 
-    print("Final Y shape", arr.shape)
+    # print("Final Y shape", arr.shape)
 
     return arr
 
@@ -163,8 +163,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
             frame = 0
             num_windows = (num_timesteps // hop_length) + 1
             window_length = int((width - (args.nfft - 1) - 1) / args.nhop) + 1
-            print("num_windows", num_windows)
-            print("window_length", window_length)
+            # print("num_windows", num_windows)
+            # print("window_length", window_length)
             arr_len = (num_windows * window_length) // 2
             bins = args.nfft // 2 + 1
             batch = args.batch_size
@@ -185,33 +185,35 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     x_time_temp = resample(x_time_temp)
 
                     Y_hat = unmix(X_tmp, x_time_temp)
-                    print("Y_hat shape", Y_hat.shape)
+                    # print("Y_hat shape", Y_hat.shape)
                     print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length)
-                    print("Keeping only {} frames".format(num_frames_to_keep))
+                    # print("Keeping only {} frames".format(num_frames_to_keep))
                     arr[..., frame:frame+num_frames_to_keep] += Y_hat[..., :num_frames_to_keep]
-                    print("Final iteration start frame {}, end frame {}".format(frame, frame + num_frames_to_keep))
+                    # print("Final iteration start frame {}, end frame {}".format(frame, frame + num_frames_to_keep))
                     break
                 
                 X_tmp = encoder(X_tmp)
                 x_time_temp = resample(x_time_temp)
                 Y_hat = unmix(X_tmp, x_time_temp)
-                print("Y_hat shape", Y_hat.shape)
+                # print("Y_hat shape", Y_hat.shape)
 
                 arr[..., frame:(frame + Y_hat.shape[-1])] += Y_hat
                 frame += Y_hat.shape[-1] // 2
-                print("Frame start", frame)
+                # print("Frame start", frame)
 
-            print("arr shape", arr.shape)
+            # print("arr shape", arr.shape)
 
             arr[..., :Y_hat.shape[-1] // 2] *= 2
             arr[..., frame + Y_hat.shape[-1] // 2:] *= 2
-            print("doubling frames from 0 to {} and from {} to end".format(frame, frame + Y_hat.shape[-1] // 2))
+            # print("doubling frames from 0 to {} and from {} to end".format(frame, frame + Y_hat.shape[-1] // 2))
             
             arr /= 2
 
-            print("original arr shape", arr.shape)
+            # print("original arr shape", arr.shape)
             arr = arr[..., :frame + num_frames_to_keep]
-            print("final arr shape", arr.shape)
+            # print("final arr shape", arr.shape)
+
+            print(arr.shape, Y.shape)
 
             loss = torch.nn.functional.mse_loss(arr, Y)
             losses.update(loss.item(), Y.size(1))
