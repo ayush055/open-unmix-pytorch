@@ -71,18 +71,18 @@ class TransformerBlock(nn.Module):
         self.num_encoder_layers = num_encoder_layers
         self.num_heads = num_heads
 
-        self.pos_encoder_intra = PositionalEncoding(d_model=feature_size, dropout=0.2, max_len=20000)
+        self.pos_encoder_intra = PositionalEncoding(d_model=feature_size, dropout=0, max_len=20000)
         self.encoder_layers_intra = nn.ModuleList([])
         for _ in range(self.num_encoder_layers):
             self.encoder_layers_intra.append(
-                TransformerEncoderLayer(d_model=feature_size, nhead=self.num_heads, dim_feedforward=feature_size*4, dropout=0.5)
+                TransformerEncoderLayer(d_model=feature_size, nhead=self.num_heads, dim_feedforward=feature_size*4, dropout=0)
             )
 
-        self.pos_encoder_inter = PositionalEncoding(d_model=feature_size, dropout=0.2, max_len=20000)
+        self.pos_encoder_inter = PositionalEncoding(d_model=feature_size, dropout=0, max_len=20000)
         self.encoder_layers_inter = nn.ModuleList([])
         for _ in range(self.num_encoder_layers):
             self.encoder_layers_inter.append(
-                TransformerEncoderLayer(d_model=feature_size, nhead=self.num_heads, dim_feedforward=feature_size*4, dropout=0.5)
+                TransformerEncoderLayer(d_model=feature_size, nhead=self.num_heads, dim_feedforward=feature_size*4, dropout=0)
             )
     
     def forward(self, x):
@@ -384,7 +384,7 @@ class OpenUnmix(nn.Module):
         self.transformer = TransformerWaveform(
             speakers=1,
             input_channels=2,
-            conv_kernel_size=4,
+            conv_kernel_size=2,
             conv_filters=64,
             num_heads=4,
             chunk_size=250,
