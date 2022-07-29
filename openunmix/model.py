@@ -384,7 +384,7 @@ class OpenUnmix(nn.Module):
         self.transformer = TransformerWaveform(
             speakers=1,
             input_channels=2,
-            conv_kernel_size=2,
+            conv_kernel_size=4,
             conv_filters=64,
             num_heads=4,
             chunk_size=250,
