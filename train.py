@@ -194,6 +194,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
 
                 X_tmp = encoder(X_tmp)
                 x_time_temp = resample(x_time_temp)
+                print(X_tmp.shape, x_time_temp.shape)
                 Y_hat = unmix(X_tmp, x_time_temp)
                 print("Y_hat shape", Y_hat.shape)
 
