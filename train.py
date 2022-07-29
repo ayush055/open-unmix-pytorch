@@ -191,8 +191,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                     arr[..., frame:frame+num_frames_to_keep] += Y_hat[..., :num_frames_to_keep]
                     print("Final iteration start frame {}, end frame {}".format(frame, frame + num_frames_to_keep))
                     break
-
-                print(X_tmp.shape, x_time_temp.shape)
+                
                 X_tmp = encoder(X_tmp)
                 x_time_temp = resample(x_time_temp)
                 Y_hat = unmix(X_tmp, x_time_temp)
