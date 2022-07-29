@@ -385,11 +385,11 @@ class OpenUnmix(nn.Module):
             speakers=1,
             input_channels=2,
             conv_kernel_size=4,
-            conv_filters=64,
+            conv_filters=128,
             num_heads=4,
             chunk_size=250,
             num_transformer_blocks=2,
-            num_encoder_layers=4,
+            num_encoder_layers=2,
         )
 
         self.filter_bins = Linear(in_features=self.nb_output_bins*nb_channels*2, out_features=self.nb_output_bins*nb_channels, bias=False)
