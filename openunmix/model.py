@@ -389,7 +389,7 @@ class OpenUnmix(nn.Module):
             num_heads=4,
             chunk_size=250,
             num_transformer_blocks=2,
-            num_encoder_layers=4,
+            num_encoder_layers=2,
         )
 
         self.filter_bins = Linear(in_features=self.nb_output_bins*nb_channels*2, out_features=self.nb_output_bins*nb_channels, bias=False)
