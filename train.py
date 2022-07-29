@@ -128,7 +128,8 @@ def encoder_y(args, encoder, arr_len, y):
             y_tmp = F.pad(y_tmp, padding, "constant", 0)
             y_tmp = encoder(y_tmp)
             arr[..., frame:frame+num_frames_to_keep] += y_tmp[..., :num_frames_to_keep]
-
+        
+        print(y_tmp.shape)
         y_tmp = encoder(y_tmp)
         arr[..., frame:(frame + y_tmp.shape[-1])] += y_tmp
         frame += y_tmp.shape[-1] // 2
