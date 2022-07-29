@@ -277,9 +277,9 @@ class TransformerWaveform(nn.Module):
         # for i in range(self.in_channels):
         audio[0] = audio[0][:, :, self.conv_kernel_size // 2:-(rest + self.conv_kernel_size // 2)].contiguous()  # B, 1, T
         # audio[1] = audio[1][:, :, self.conv_kernel_size // 2:-(rest + self.conv_kernel_size // 2)].contiguous()  # B, 1, T
-        audio = torch.cat(audio, dim=1)  # [B, C, T]
+        # audio = torch.cat(audio, dim=1)  # [B, C, T]
 
-        return audio
+        return audio[0]
 
     def pad_signal(self, input):
 
@@ -500,7 +500,8 @@ class OpenUnmix(nn.Module):
 
         # x = (x + x_time) / 2
         x = torch.cat([x, x_time], -1)
-        x = x.reshape(nb_frames, nb_samples, -1)
+        x = nn.Dropout(0.25)(x)
+        x = x.reshape(-1, self.nb_output_bins * 2)
         x = self.filter_bins(x)
         x = x.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
 

@@ -105,6 +105,46 @@ def valid2(args, unmix, encoder, device, valid_sampler):
             losses.update(loss.item(), Y.size(1))
         return losses.avg
 
+def encoder_y(args, encoder, arr_len, y):
+    bins = (args.nfft // 2 + 1) * 2
+    batch = args.batch_size
+    channel = args.nb_channels
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    width = int(44100 * args.seq_dur)
+    hop_length = width//2
+    num_timesteps = y.size(-1)
+    frame = 0
+    
+    arr = torch.zeros(size=(batch, channel, bins, arr_len)).to(device)
+
+    for i in range(0, num_timesteps, hop_length):
+        y_tmp = y[..., i:(i + width)]
+
+        if i + width > num_timesteps:
+            print("Time steps left", y_tmp.size(-1))
+            num_frames_to_keep = int((y_tmp.size(-1) - (args.nfft - 1) - 1) / args.nhop) + 1
+            padding = (0, i + width - num_timesteps)
+            y_tmp = F.pad(y_tmp, padding, "constant", 0)
+            y_tmp = encoder(y_tmp)
+            arr[..., frame:frame+num_frames_to_keep] += y_tmp[..., :num_frames_to_keep]
+
+        y_tmp = encoder(y_tmp)
+        arr[..., frame:(frame + y_tmp.shape[-1])] += y_tmp
+        frame += y_tmp.shape[-1] // 2
+
+    arr[..., :y_tmp.shape[-1] // 2] *= 2
+    arr[..., frame + y_tmp.shape[-1] // 2:] *= 2
+
+    arr /= 2
+
+    print("original arr shape", arr.shape)
+    arr = arr[..., :frame + num_frames_to_keep]
+
+    print("Final Y shape", arr.shape)
+
+    return arr
+
 def valid(args, unmix, encoder, device, valid_sampler):
     losses = utils.AverageMeter()
     unmix.eval()
@@ -115,13 +155,9 @@ def valid(args, unmix, encoder, device, valid_sampler):
         print(width, hop_length)
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
-            Y = encoder(y)
-
-            print(x.shape, Y.shape)
-            
+                        
             loss = 0
             num_timesteps = x.size(-1)
-            num_frames = Y.size(-1)
 
             frame = 0
             num_windows = (num_timesteps // hop_length) + 1
@@ -129,8 +165,11 @@ def valid(args, unmix, encoder, device, valid_sampler):
             print("num_windows", num_windows)
             print("window_length", window_length)
             arr_len = (num_windows * window_length) // 2
-            batch, channel, bins, _ = Y.size()
+            bins = (args.nfft // 2 + 1) * 2
+            batch = args.batch_size
+            channel = args.nb_channels
             arr = torch.zeros(size=(batch, channel, bins, arr_len)).to(device)
+            Y = encoder_y(args, encoder, arr_len, y)
             print("Final arr shape", arr.shape)
             
             for i in range(0, num_timesteps, hop_length):
@@ -147,7 +186,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
 
                     Y_hat = unmix(X_tmp, x_time_temp)
                     print("Y_hat shape", Y_hat.shape)
-                    print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length, "num_frames", num_frames)
+                    print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length)
                     print("Keeping only {} frames".format(num_frames_to_keep))
                     arr[..., frame:frame+num_frames_to_keep] += Y_hat[..., :num_frames_to_keep]
                     print("Final iteration start frame {}, end frame {}".format(frame, frame + num_frames_to_keep))
@@ -173,9 +212,6 @@ def valid(args, unmix, encoder, device, valid_sampler):
             print("original arr shape", arr.shape)
             arr = arr[..., :frame + num_frames_to_keep]
             print("final arr shape", arr.shape)
-
-            Y = F.interpolate(Y, size=(bins, arr.shape[-1]))
-            print("interpolated arr shape", arr.shape)
 
             loss = torch.nn.functional.mse_loss(arr, Y)
             losses.update(loss.item(), Y.size(1))
@@ -451,7 +487,7 @@ def main():
     for epoch in t:
         t.set_description("Training epoch")
         end = time.time()
-        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
+        valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
         valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         scheduler.step(valid_loss)
