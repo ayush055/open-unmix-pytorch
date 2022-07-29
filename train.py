@@ -171,7 +171,6 @@ def valid(args, unmix, encoder, device, valid_sampler):
             channel = args.nb_channels
             arr = torch.zeros(size=(batch, channel, bins, arr_len)).to(device)
             Y = encoder_y(args, encoder, arr_len, y)
-            print("Final arr shape", arr.shape)
             
             for i in range(0, num_timesteps, hop_length):
                 X_tmp = x[..., i:(i + width)]
