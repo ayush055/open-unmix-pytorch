@@ -36,6 +36,7 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         # x_time = resample(x_time)
         X = encoder(x)
         # print("original x stft shape", X.shape)
+        print(X.shape, x_time.shape)
         Y_hat = unmix(X, x_time)
         # print("Y_hat shape", Y_hat.shape)
         Y = encoder(y)
