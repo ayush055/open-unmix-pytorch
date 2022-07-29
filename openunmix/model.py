@@ -384,12 +384,12 @@ class OpenUnmix(nn.Module):
         self.transformer = TransformerWaveform(
             speakers=1,
             input_channels=2,
-            conv_kernel_size=4,
+            conv_kernel_size=2,
             conv_filters=64,
             num_heads=4,
             chunk_size=250,
-            num_transformer_blocks=2,
-            num_encoder_layers=4,
+            num_transformer_blocks=1,
+            num_encoder_layers=1,
         )
 
         self.filter_bins = Linear(in_features=self.nb_output_bins*nb_channels*2, out_features=self.nb_output_bins*nb_channels, bias=False)
@@ -433,14 +433,15 @@ class OpenUnmix(nn.Module):
         # print("x_time shape: ", x_time.shape)
         x_time = self.transformer(x_time)
         # print("x_time shape:", x_time.shape)
-        resample = torchaudio.transforms.Resample(16000, 44100).to(self.device)
-        x_time = resample(x_time)
-        # print("x_time shape:", x_time.shape)
+        # resample = torchaudio.transforms.Resample(16000, 44100).to(self.device)
+        # x_time = resample(x_time)
+        print("x_time shape:", x_time.shape)
         stft, _ = make_filterbanks(
         n_fft=4096, n_hop=1024, sample_rate=44100
         )
         encoder = torch.nn.Sequential(stft, ComplexNorm(mono=False)).to(self.device)
         x_time = encoder(x_time)
+        print("x_time shape:", x_time.shape)
 
         # permute so that batch is last for lstm
         x = x.permute(3, 0, 1, 2)
@@ -500,7 +501,7 @@ class OpenUnmix(nn.Module):
 
         # x = (x + x_time) / 2
         x = torch.cat([x, x_time], -1)
-        x = nn.Dropout(0.25)(x)
+        # x = nn.Dropout(0.25)(x)
         x = x.reshape(-1, self.nb_output_bins*nb_channels*2)
         x = self.filter_bins(x)
         x = x.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
@@ -600,16 +601,80 @@ class Separator(nn.Module):
 
         # getting the STFT of mix:
         # (nb_samples, nb_channels, nb_bins, nb_frames, 2)
-        mix_stft = self.stft(audio)
-        X = self.complexnorm(mix_stft)
+        x = audio.clone()
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        seq_dur = 3
+
+        width = int(44100 * seq_dur)
+        hop_length = width//2
+        resample = torchaudio.transforms.Resample(44100, 16000).to(device)
+
+        nfft = 4096
+        nhop = 1024
+        batch_size = 1
+        nb_channels = 2
+        
+        encoder = torch.nn.Sequential(self.stft, ComplexNorm(mono=nb_channels == 1)).to(device)
+
+        num_timesteps = x.size(-1)
+        frame = 0
+        num_windows = (num_timesteps // hop_length) + 1
+        window_length = int((width - (nfft - 1) - 1) / nhop) + 1
+        arr_len = (num_windows * window_length) // 2
+        bins = nfft // 2 + 1
+        batch = batch_size
+        channel = nb_channels
 
         # initializing spectrograms variable
-        spectrograms = torch.zeros(X.shape + (nb_sources,), dtype=audio.dtype, device=X.device)
+        spectrograms = torch.zeros(size=(batch, channel, bins, arr_len) + (nb_sources,), dtype=audio.dtype, device=X.device)
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
             # apply current model to get the source spectrogram
-            target_spectrogram = target_module(X.detach().clone())
-            spectrograms[..., j] = target_spectrogram
+
+            arr = torch.zeros(size=(batch, channel, bins, arr_len)).to(device)
+            
+            for i in range(0, num_timesteps, hop_length):
+                X_tmp = x[..., i:(i + width)]
+                x_time_temp = X_tmp.clone()
+
+                if i + width > num_timesteps:
+                    # print("Time steps left", X_tmp.size(-1))
+                    num_frames_to_keep = int((X_tmp.size(-1) - (nfft - 1) - 1) / nhop) + 1
+                    padding = (0, i + width - num_timesteps)
+                    X_tmp, x_time_temp = F.pad(X_tmp, padding, "constant", 0), F.pad(x_time_temp, padding, "constant", 0)
+                    X_tmp = encoder(X_tmp)
+                    x_time_temp = resample(x_time_temp)
+
+                    Y_hat = target_module(X_tmp, x_time_temp)
+                    # print("Y_hat shape", Y_hat.shape)
+                    print("i", i, "width", width, "num timesteps", num_timesteps, "frame", frame, "hop_length", hop_length)
+                    # print("Keeping only {} frames".format(num_frames_to_keep))
+                    arr[..., frame:frame+num_frames_to_keep] += Y_hat[..., :num_frames_to_keep]
+                    # print("Final iteration start frame {}, end frame {}".format(frame, frame + num_frames_to_keep))
+                    break
+                
+                X_tmp = encoder(X_tmp)
+                x_time_temp = resample(x_time_temp)
+                Y_hat = target_module(X_tmp, x_time_temp)
+                # print("Y_hat shape", Y_hat.shape)
+
+                arr[..., frame:(frame + Y_hat.shape[-1])] += Y_hat
+                frame += Y_hat.shape[-1] // 2
+                # print("Frame start", frame)
+
+            # print("arr shape", arr.shape)
+
+            arr[..., :Y_hat.shape[-1] // 2] *= 2
+            arr[..., frame + Y_hat.shape[-1] // 2:] *= 2
+            # print("doubling frames from 0 to {} and from {} to end".format(frame, frame + Y_hat.shape[-1] // 2))
+            
+            arr /= 2
+
+            # print("original arr shape", arr.shape)
+            arr = arr[..., :frame + num_frames_to_keep]
+
+            spectrograms[..., j] = arr
 
         # transposing it as
         # (nb_samples, nb_frames, nb_bins,{1,nb_channels}, nb_sources)

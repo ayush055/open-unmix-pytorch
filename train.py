@@ -32,8 +32,8 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         optimizer.zero_grad()
         x_time = x.clone()
         # print("original shape", x_time.shape)
-        resample = torchaudio.transforms.Resample(44100, 16000).to(device)
-        x_time = resample(x_time)
+        # resample = torchaudio.transforms.Resample(44100, 16000).to(device)
+        # x_time = resample(x_time)
         X = encoder(x)
         # print("original x stft shape", X.shape)
         Y_hat = unmix(X, x_time)
@@ -151,9 +151,8 @@ def valid(args, unmix, encoder, device, valid_sampler):
     unmix.eval()
     with torch.no_grad():
         width = int(44100 * args.seq_dur)
-        hop_length = width//2# + 1
+        hop_length = width//2
         resample = torchaudio.transforms.Resample(44100, 16000).to(device)
-        print(width, hop_length)
         for x, y in valid_sampler:
             x, y = x.to(device), y.to(device)
                         
@@ -163,8 +162,6 @@ def valid(args, unmix, encoder, device, valid_sampler):
             frame = 0
             num_windows = (num_timesteps // hop_length) + 1
             window_length = int((width - (args.nfft - 1) - 1) / args.nhop) + 1
-            # print("num_windows", num_windows)
-            # print("window_length", window_length)
             arr_len = (num_windows * window_length) // 2
             bins = args.nfft // 2 + 1
             batch = args.batch_size
