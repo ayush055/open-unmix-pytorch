@@ -31,15 +31,15 @@ def train(args, unmix, encoder, device, train_sampler, optimizer):
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
         x_time = x.clone()
-        print("original shape", x_time.shape)
+        # print("original shape", x_time.shape)
         resample = torchaudio.transforms.Resample(44100, 16000).to(device)
         x_time = resample(x_time)
         X = encoder(x)
         # print("original x stft shape", X.shape)
         Y_hat = unmix(X, x_time)
-        print("Y_hat shape", Y_hat.shape)
+        # print("Y_hat shape", Y_hat.shape)
         Y = encoder(y)
-        print("train Y_hat shape", Y_hat.shape)
+        # print("train Y_hat shape", Y_hat.shape)
         loss = torch.nn.functional.mse_loss(Y_hat, Y)
         loss.backward()
         optimizer.step()
@@ -122,7 +122,7 @@ def encoder_y(args, encoder, arr_len, y):
         y_tmp = y[..., i:(i + width)]
 
         if i + width > num_timesteps:
-            print("Time steps left", y_tmp.size(-1))
+            # print("Time steps left", y_tmp.size(-1))
             num_frames_to_keep = int((y_tmp.size(-1) - (args.nfft - 1) - 1) / args.nhop) + 1
             padding = (0, i + width - num_timesteps)
             y_tmp = F.pad(y_tmp, padding, "constant", 0)
@@ -177,7 +177,7 @@ def valid(args, unmix, encoder, device, valid_sampler):
                 x_time_temp = X_tmp.clone()
 
                 if i + width > num_timesteps:
-                    print("Time steps left", X_tmp.size(-1))
+                    # print("Time steps left", X_tmp.size(-1))
                     num_frames_to_keep = int((X_tmp.size(-1) - (args.nfft - 1) - 1) / args.nhop) + 1
                     padding = (0, i + width - num_timesteps)
                     X_tmp, x_time_temp = F.pad(X_tmp, padding, "constant", 0), F.pad(x_time_temp, padding, "constant", 0)
@@ -489,7 +489,7 @@ def main():
     for epoch in t:
         t.set_description("Training epoch")
         end = time.time()
-        valid_loss = valid(args, unmix, encoder, device, valid_sampler)
+        # valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         train_loss = train(args, unmix, encoder, device, train_sampler, optimizer)
         valid_loss = valid(args, unmix, encoder, device, valid_sampler)
         scheduler.step(valid_loss)
