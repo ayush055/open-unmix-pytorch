@@ -388,8 +388,8 @@ class OpenUnmix(nn.Module):
             conv_filters=64,
             num_heads=4,
             chunk_size=250,
-            num_transformer_blocks=1,
-            num_encoder_layers=1,
+            num_transformer_blocks=2,
+            num_encoder_layers=2,
         )
 
         self.filter_bins = Linear(in_features=self.nb_output_bins*nb_channels*2, out_features=self.nb_output_bins*nb_channels, bias=False)
@@ -433,8 +433,8 @@ class OpenUnmix(nn.Module):
         # print("x_time shape: ", x_time.shape)
         x_time = self.transformer(x_time)
         # print("x_time shape:", x_time.shape)
-        # resample = torchaudio.transforms.Resample(16000, 44100).to(self.device)
-        # x_time = resample(x_time)
+        resample = torchaudio.transforms.Resample(16000, 44100).to(self.device)
+        x_time = resample(x_time)
         print("x_time shape:", x_time.shape)
         stft, _ = make_filterbanks(
         n_fft=4096, n_hop=1024, sample_rate=44100
