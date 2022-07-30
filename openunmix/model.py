@@ -625,7 +625,7 @@ class Separator(nn.Module):
             y_tmp = encoder(y_tmp)
             if only_stft:
                 print(arr.shape, y_tmp.shape)
-                print(arr[..., frame:(frame + y_tmp.shape[-2]), :])
+                print(arr[..., frame:(frame + y_tmp.shape[-2]), :].shape)
                 arr[..., frame:(frame + y_tmp.shape[-2]), :] += y_tmp
                 frame += y_tmp.shape[-2] // 2
             else:
@@ -650,6 +650,32 @@ class Separator(nn.Module):
         # print("Final Y shape", arr.shape)
 
         return arr
+
+    def decode_y(self, nfft, batch_size, nb_channels, seq_dur, nhop, encoder, num_timesteps, y):
+        bins = nfft // 2 + 1
+        batch = batch_size
+        channel = nb_channels
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        width = int(44100 * seq_dur)
+        hop_length = width//2
+        frame = 0
+        num_frames = y.shape[-1]
+
+        num_windows = (num_timesteps // hop_length) + 1
+        window_length = int((width - (nfft - 1) - 1) / nhop) + 1
+        window_hop = window_length // 2
+
+        arr = torch.zeros(size=(batch, channel, num_timesteps)).to(device)
+
+        print(num_frames, window_hop)
+
+        for i in range(0, num_frames, window_hop):
+            y_tmp = y[..., i:(i + window_length)]
+
+
+
+        self.istft(targets_stft, length=audio.shape[2])
 
     def forward(self, audio: Tensor) -> Tensor:
         """Performing the separation on audio input
@@ -800,6 +826,7 @@ class Separator(nn.Module):
         targets_stft = targets_stft.permute(0, 5, 3, 2, 1, 4).contiguous()
 
         # inverse STFT
+        estimates = self.decode_y(nfft, batch_size, nb_channels, seq_dur, nhop, self.istft, audio.shape[-1], targets_stft)
         estimates = self.istft(targets_stft, length=audio.shape[2])
 
         return estimates
