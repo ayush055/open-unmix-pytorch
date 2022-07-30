@@ -560,13 +560,13 @@ class Separator(nn.Module):
         self.softmask = softmask
         self.wiener_win_len = wiener_win_len
 
-        # self.stft, self.istft = make_filterbanks(
-        #     n_fft=n_fft,
-        #     n_hop=n_hop,
-        #     center=True,
-        #     method=filterbank,
-        #     sample_rate=sample_rate,
-        # )
+        self.stft2, self.istft2 = make_filterbanks(
+            n_fft=n_fft,
+            n_hop=n_hop,
+            center=True,
+            method=filterbank,
+            sample_rate=sample_rate,
+        )
 
         nfft = 4096
         nhop = 1024
@@ -736,6 +736,7 @@ class Separator(nn.Module):
         # rearranging it into:
         # (nb_samples, nb_frames, nb_bins, nb_channels, 2) to feed
         # into filtering methods
+        print(self.complexnorm(self.stft2(audio)).shape)
         mix_stft = self.encoder_y(nfft, batch_size, nb_channels, seq_dur, nhop, encoder, arr.shape[-1], audio)
         print(mix_stft.shape)
         mix_stft = mix_stft.permute(0, 3, 2, 1, 4)
