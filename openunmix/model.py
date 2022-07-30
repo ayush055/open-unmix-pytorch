@@ -560,12 +560,19 @@ class Separator(nn.Module):
         self.softmask = softmask
         self.wiener_win_len = wiener_win_len
 
+        # self.stft, self.istft = make_filterbanks(
+        #     n_fft=n_fft,
+        #     n_hop=n_hop,
+        #     center=True,
+        #     method=filterbank,
+        #     sample_rate=sample_rate,
+        # )
+
+        nfft = 4096
+        nhop = 1024
+
         self.stft, self.istft = make_filterbanks(
-            n_fft=n_fft,
-            n_hop=n_hop,
-            center=True,
-            method=filterbank,
-            sample_rate=sample_rate,
+            n_fft=nfft, n_hop=nhop,
         )
         self.complexnorm = ComplexNorm(mono=nb_channels == 1)
 
