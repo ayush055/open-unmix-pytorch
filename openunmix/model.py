@@ -755,7 +755,7 @@ class Separator(nn.Module):
         # (nb_samples, nb_frames, nb_bins, nb_channels, 2) to feed
         # into filtering methods
 
-        mix_stft = self.encoder_y(nfft, batch_size, nb_channels, seq_dur, nhop, encoder, arr.shape[-1], audio, only_stft=True)
+        mix_stft = self.encoder_y(nfft, batch_size, nb_channels, seq_dur, nhop, self.stft, arr.shape[-1], audio, only_stft=True)
         print(mix_stft.shape)
         
         mix_stft = mix_stft.permute(0, 3, 2, 1, 4)
