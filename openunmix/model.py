@@ -692,9 +692,6 @@ class Separator(nn.Module):
         batch = batch_size
         channel = nb_channels
 
-        mix_stft = self.encoder_y(nfft, batch_size, nb_channels, seq_dur, nhop, encoder, arr.shape[-1], audio, only_stft=True)
-        print(mix_stft.shape)
-
         # initializing spectrograms variable
         # spectrograms = torch.zeros(size=(batch, channel, bins, arr_len) + (nb_sources,), dtype=audio.dtype, device=device)
         # print("SPECTOGRAMS SHAPE", spectrograms.shape)
@@ -757,6 +754,9 @@ class Separator(nn.Module):
         # rearranging it into:
         # (nb_samples, nb_frames, nb_bins, nb_channels, 2) to feed
         # into filtering methods
+
+        mix_stft = self.encoder_y(nfft, batch_size, nb_channels, seq_dur, nhop, encoder, arr.shape[-1], audio, only_stft=True)
+        print(mix_stft.shape)
         
         mix_stft = mix_stft.permute(0, 3, 2, 1, 4)
 
