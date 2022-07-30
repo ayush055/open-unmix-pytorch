@@ -496,7 +496,7 @@ class OpenUnmix(nn.Module):
         # print("x time shape", x_time.shape)
         x_time = x_time.reshape(-1, x_time.shape[-1]).permute(1, 0)
         # print("x time shape", x_time.shape)
-        x_time = x_time.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
+        x_time = x_time.reshape(-1, nb_samples, nb_channels, self.nb_output_bins)
         # print("x time shape", x_time.shape)
 
         # x = (x + x_time) / 2
@@ -504,7 +504,7 @@ class OpenUnmix(nn.Module):
         # x = nn.Dropout(0.25)(x)
         x = x.reshape(-1, self.nb_output_bins*nb_channels*2)
         x = self.filter_bins(x)
-        x = x.reshape(nb_frames, nb_samples, nb_channels, self.nb_output_bins)
+        x = x.reshape(-1, nb_samples, nb_channels, self.nb_output_bins)
 
         # permute back to (nb_samples, nb_channels, nb_bins, nb_frames)
 
