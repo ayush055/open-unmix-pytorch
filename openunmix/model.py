@@ -656,6 +656,7 @@ class Separator(nn.Module):
                 
                 X_tmp = encoder(X_tmp)
                 x_time_temp = resample(x_time_temp)
+                print(X_tmp.shape, x_time_temp.shape)
                 Y_hat = target_module(X_tmp, x_time_temp)
                 # print("Y_hat shape", Y_hat.shape)
 
