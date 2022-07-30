@@ -672,7 +672,7 @@ class Separator(nn.Module):
 
         for i in range(0, num_frames, window_hop):
             y_tmp = y[..., i:(i + window_length), :]
-            print(y_tmp.shape)
+            print(y_tmp.shape, width)
             print(self.istft(y_tmp, length=width).shape)
 
 
