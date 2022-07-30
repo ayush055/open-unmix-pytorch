@@ -634,8 +634,8 @@ class Separator(nn.Module):
         channel = nb_channels
 
         # initializing spectrograms variable
-        spectrograms = torch.zeros(size=(batch, channel, bins, arr_len) + (nb_sources,), dtype=audio.dtype, device=device)
-        print("SPECTOGRAMS SHAPE", spectrograms.shape)
+        # spectrograms = torch.zeros(size=(batch, channel, bins, arr_len) + (nb_sources,), dtype=audio.dtype, device=device)
+        # print("SPECTOGRAMS SHAPE", spectrograms.shape)
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
             # apply current model to get the source spectrogram
@@ -685,10 +685,9 @@ class Separator(nn.Module):
 
             print("arr shape", arr.shape)
             print("spectogram shape", spectrograms.shape)
-            spectrograms[..., arr.shape[-1], j] = arr
+            spectrograms = torch.zeros(size=(batch, channel, bins, arr.shape[-1]) + (nb_sources,), dtype=audio.dtype, device=device)
+            spectrograms[..., j] = arr
         
-        spectrograms = spectrograms[..., arr.shape[-1], :]
-
         # transposing it as
         # (nb_samples, nb_frames, nb_bins,{1,nb_channels}, nb_sources)
         spectrograms = spectrograms.permute(0, 3, 2, 1, 4)
