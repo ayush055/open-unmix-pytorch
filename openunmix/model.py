@@ -604,7 +604,7 @@ class Separator(nn.Module):
         x = audio.clone()
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        seq_dur = 3
+        seq_dur = 4
 
         width = int(44100 * seq_dur)
         hop_length = width//2
@@ -627,7 +627,7 @@ class Separator(nn.Module):
         channel = nb_channels
 
         # initializing spectrograms variable
-        spectrograms = torch.zeros(size=(batch, channel, bins, arr_len) + (nb_sources,), dtype=audio.dtype, device=X.device)
+        spectrograms = torch.zeros(size=(batch, channel, bins, arr_len) + (nb_sources,), dtype=audio.dtype, device=device)
 
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
             # apply current model to get the source spectrogram
