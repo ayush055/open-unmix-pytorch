@@ -624,6 +624,7 @@ class Separator(nn.Module):
             
             y_tmp = encoder(y_tmp)
             if only_stft:
+                print(arr.shape, y_tmp.shape)
                 arr[..., frame:(frame + y_tmp.shape[-1]), :] += y_tmp
             else:
                 arr[..., frame:(frame + y_tmp.shape[-1])] += y_tmp
