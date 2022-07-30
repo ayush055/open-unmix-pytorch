@@ -560,7 +560,7 @@ class Separator(nn.Module):
         self.softmask = softmask
         self.wiener_win_len = wiener_win_len
 
-        self.stft2, self.istft2 = make_filterbanks(
+        self.stft, self.istft = make_filterbanks(
             n_fft=n_fft,
             n_hop=n_hop,
             center=True,
@@ -571,9 +571,9 @@ class Separator(nn.Module):
         nfft = 4096
         nhop = 1024
 
-        self.stft, self.istft = make_filterbanks(
-            n_fft=nfft, n_hop=nhop,
-        )
+        # self.stft, self.istft = make_filterbanks(
+        #     n_fft=nfft, n_hop=nhop,
+        # )
         self.complexnorm = ComplexNorm(mono=nb_channels == 1)
 
         # registering the targets models
