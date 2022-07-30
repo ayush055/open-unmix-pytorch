@@ -751,6 +751,7 @@ class Separator(nn.Module):
                     # print("Final iteration start frame {}, end frame {}".format(frame, frame + num_frames_to_keep))
                     break
                 
+                print(X_tmp.shape)
                 X_tmp = encoder(X_tmp)
                 x_time_temp = resample(x_time_temp)
                 print(X_tmp.shape, x_time_temp.shape)
