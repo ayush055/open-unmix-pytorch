@@ -683,9 +683,9 @@ class Separator(nn.Module):
             # print("original arr shape", arr.shape)
             arr = arr[..., :frame + num_frames_to_keep]
 
+            spectrograms = torch.zeros(size=(batch, channel, bins, arr.shape[-1]) + (nb_sources,), dtype=audio.dtype, device=device)
             print("arr shape", arr.shape)
             print("spectogram shape", spectrograms.shape)
-            spectrograms = torch.zeros(size=(batch, channel, bins, arr.shape[-1]) + (nb_sources,), dtype=audio.dtype, device=device)
             spectrograms[..., j] = arr
         
         # transposing it as
