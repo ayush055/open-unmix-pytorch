@@ -667,9 +667,6 @@ class Separator(nn.Module):
         # getting the STFT of mix:
         # (nb_samples, nb_channels, nb_bins, nb_frames, 2)
 
-        mix_stft = self.encoder_y(nfft, batch_size, nb_channels, seq_dur, nhop, encoder, arr.shape[-1], audio, only_stft=True)
-        print(mix_stft.shape)
-
         x = audio.clone()
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -694,6 +691,9 @@ class Separator(nn.Module):
         bins = nfft // 2 + 1
         batch = batch_size
         channel = nb_channels
+
+        mix_stft = self.encoder_y(nfft, batch_size, nb_channels, seq_dur, nhop, encoder, arr.shape[-1], audio, only_stft=True)
+        print(mix_stft.shape)
 
         # initializing spectrograms variable
         # spectrograms = torch.zeros(size=(batch, channel, bins, arr_len) + (nb_sources,), dtype=audio.dtype, device=device)
