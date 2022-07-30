@@ -591,26 +591,28 @@ class Separator(nn.Module):
             p.requires_grad = False
         self.eval()
 
-    def encoder_y(args, encoder, arr_len, y, only_stft=False):
-        bins = args.nfft // 2 + 1
-        batch = args.batch_size
-        channel = args.nb_channels
+    def encoder_y(self, nfft, batch_size, nb_channels, seq_dur, nhop, encoder, arr_len, y, only_stft=False):
+        bins = nfft // 2 + 1
+        batch = batch_size
+        channel = nb_channels
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        width = int(44100 * args.seq_dur)
+        width = int(44100 * seq_dur)
         hop_length = width//2
         num_timesteps = y.size(-1)
         frame = 0
-
+        
         if only_stft:
             arr = torch.zeros(size=(batch, channel, bins, arr_len, 2)).to(device)
+        else:
+            arr = torch.zeros(size=(batch, channel, bins, arr_len)).to(device)
 
         for i in range(0, num_timesteps, hop_length):
             y_tmp = y[..., i:(i + width)]
 
             if i + width > num_timesteps:
                 # print("Time steps left", y_tmp.size(-1))
-                num_frames_to_keep = int((y_tmp.size(-1) - (args.nfft - 1) - 1) / args.nhop) + 1
+                num_frames_to_keep = int((y_tmp.size(-1) - (nfft - 1) - 1) / nhop) + 1
                 padding = (0, i + width - num_timesteps)
                 y_tmp = F.pad(y_tmp, padding, "constant", 0)
                 y_tmp = encoder(y_tmp)
@@ -679,7 +681,7 @@ class Separator(nn.Module):
         nb_channels = 2
         
         encoder = torch.nn.Sequential(self.stft, ComplexNorm(mono=nb_channels == 1)).to(device)
-        
+
         num_timesteps = x.size(-1)
         frame = 0
         num_windows = (num_timesteps // hop_length) + 1
@@ -752,7 +754,7 @@ class Separator(nn.Module):
         # (nb_samples, nb_frames, nb_bins, nb_channels, 2) to feed
         # into filtering methods
         
-        mix_stft = self.encoder_y(nfft, batch_size, nb_channels, seq_dur, nhop, self.stft, arr.shape[-1], audio, only_stft=True)
+        mix_stft = self.encoder_y(nfft, batch_size, nb_channels, seq_dur, nhop, encoder, arr.shape[-1], audio, only_stft=True)
         print(mix_stft.shape)
         mix_stft = mix_stft.permute(0, 3, 2, 1, 4)
 
