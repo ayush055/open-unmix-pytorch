@@ -616,7 +616,7 @@ class Separator(nn.Module):
                 padding = (0, i + width - num_timesteps)
                 y_tmp = F.pad(y_tmp, padding, "constant", 0)
                 y_tmp = encoder(y_tmp)
-                y_tmp = y_tmp[..., 2:-2]
+                y_tmp = y_tmp[..., 2:-2, :]
                 if only_stft:
                     arr[..., frame:frame+num_frames_to_keep, :] += y_tmp[..., :num_frames_to_keep, :]    
                 else:
@@ -624,7 +624,7 @@ class Separator(nn.Module):
                 break
             
             y_tmp = encoder(y_tmp)
-            y_tmp = y_tmp[..., 2:-2]
+            y_tmp = y_tmp[..., 2:-2, :]
             if only_stft:
                 print(arr.shape, y_tmp.shape)
                 print(arr[..., frame:(frame + y_tmp.shape[-2]), :].shape)
