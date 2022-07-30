@@ -683,6 +683,8 @@ class Separator(nn.Module):
             # print("original arr shape", arr.shape)
             arr = arr[..., :frame + num_frames_to_keep]
 
+            print("arr shape", arr.shape)
+            print("spectogram shape", spectrograms.shape)
             spectrograms[..., arr.shape[-1], j] = arr
         
         spectrograms = spectrograms[..., arr.shape[-1], :]
