@@ -635,7 +635,8 @@ class Separator(nn.Module):
 
         # initializing spectrograms variable
         spectrograms = torch.zeros(size=(batch, channel, bins, arr_len) + (nb_sources,), dtype=audio.dtype, device=device)
-        print(spectrograms.shape)
+        print("SPECTOGRAMS SHAPE", spectrograms.shape)
+
         for j, (target_name, target_module) in enumerate(self.target_models.items()):
             # apply current model to get the source spectrogram
 
