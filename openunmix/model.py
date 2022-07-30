@@ -649,6 +649,7 @@ class Separator(nn.Module):
 
         # getting the STFT of mix:
         # (nb_samples, nb_channels, nb_bins, nb_frames, 2)
+        print(self.stft2(audio).shape)
         x = audio.clone()
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -736,7 +737,7 @@ class Separator(nn.Module):
         # rearranging it into:
         # (nb_samples, nb_frames, nb_bins, nb_channels, 2) to feed
         # into filtering methods
-        print(self.complexnorm(self.stft2(audio)).shape)
+        
         mix_stft = self.encoder_y(nfft, batch_size, nb_channels, seq_dur, nhop, encoder, arr.shape[-1], audio)
         print(mix_stft.shape)
         mix_stft = mix_stft.permute(0, 3, 2, 1, 4)
