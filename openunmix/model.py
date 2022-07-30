@@ -625,15 +625,16 @@ class Separator(nn.Module):
             y_tmp = encoder(y_tmp)
             if only_stft:
                 print(arr.shape, y_tmp.shape)
-                print(arr[..., frame:(frame + y_tmp.shape[-1]), :].shape)
-                arr[..., frame:(frame + y_tmp.shape[-1]), :] += y_tmp
+                print(arr[..., frame:(frame + y_tmp.shape[-2]), :])
+                arr[..., frame:(frame + y_tmp.shape[-2]), :] += y_tmp
+                frame += y_tmp.shape[-2] // 2
             else:
                 arr[..., frame:(frame + y_tmp.shape[-1])] += y_tmp
-            frame += y_tmp.shape[-1] // 2
+                frame += y_tmp.shape[-1] // 2
 
         if only_stft:
-            arr[..., :y_tmp.shape[-1] // 2, :] *= 2
-            arr[..., frame + y_tmp.shape[-1] // 2:, :] *= 2
+            arr[..., :y_tmp.shape[-2] // 2, :] *= 2
+            arr[..., frame + y_tmp.shape[-2] // 2:, :] *= 2
         else:
             arr[..., :y_tmp.shape[-1] // 2] *= 2
             arr[..., frame + y_tmp.shape[-1] // 2:] *= 2
