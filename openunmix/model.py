@@ -741,7 +741,7 @@ class Separator(nn.Module):
                     padding = (0, i + width - num_timesteps)
                     X_tmp, x_time_temp = F.pad(X_tmp, padding, "constant", 0), F.pad(x_time_temp, padding, "constant", 0)
                     X_tmp = encoder(X_tmp)
-                    X_tmp = X_tmp[..., 2:-2, :]
+                    X_tmp = X_tmp[..., 2:-2]
                     x_time_temp = resample(x_time_temp)
 
                     Y_hat = target_module(X_tmp, x_time_temp)
@@ -754,7 +754,7 @@ class Separator(nn.Module):
                 
                 print(X_tmp.shape)
                 X_tmp = encoder(X_tmp)
-                X_tmp = X_tmp[..., 2:-2, :]
+                X_tmp = X_tmp[..., 2:-2]
                 x_time_temp = resample(x_time_temp)
                 print(X_tmp.shape, x_time_temp.shape)
                 Y_hat = target_module(X_tmp, x_time_temp)
