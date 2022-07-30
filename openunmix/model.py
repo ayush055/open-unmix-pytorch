@@ -660,7 +660,7 @@ class Separator(nn.Module):
         width = int(44100 * seq_dur)
         hop_length = width//2
         frame = 0
-        num_frames = y.shape[-1]
+        num_frames = y.shape[-2]
 
         num_windows = (num_timesteps // hop_length) + 1
         window_length = int((width - (nfft - 1) - 1) / nhop) + 1
@@ -671,7 +671,9 @@ class Separator(nn.Module):
         print(num_frames, window_hop)
 
         for i in range(0, num_frames, window_hop):
-            y_tmp = y[..., i:(i + window_length)]
+            y_tmp = y[..., i:(i + window_length), :]
+            print(y_tmp.shape)
+            print(self.istft(y_tmp, length=width).shape)
 
 
 
